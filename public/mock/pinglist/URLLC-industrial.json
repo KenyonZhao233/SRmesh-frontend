@@ -1,0 +1,29 @@
+{
+  "sliceName": "URLLC-工业控制",
+  "pingList": [
+    {
+      "src": "172.16.1.1",
+      "dst": "172.16.2.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    },
+    {
+      "src": "172.16.2.1",
+      "dst": "172.16.3.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    },
+    {
+      "src": "172.16.3.1",
+      "dst": "172.16.4.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    },
+    {
+      "src": "172.16.1.1",
+      "dst": "172.16.5.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    }
+  ]
+}

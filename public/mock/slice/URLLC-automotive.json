@@ -1,0 +1,108 @@
+{
+  "sliceInfo": {
+    "id": "URLLC-automotive",
+    "name": "URLLC-自动驾驶",
+    "type": "URLLC",
+    "description": "自动驾驶专用切片，提供超低时延保障"
+  },
+  "cities": [
+    {
+      "id": "CD002",
+      "name": "成都",
+      "coord": [104.0665, 30.5723],
+      "AS": "AS23724",
+      "bandwidth": "3Gbps",
+      "latency": "1ms"
+    },
+    {
+      "id": "CQ002",
+      "name": "重庆",
+      "coord": [106.5516, 29.5630],
+      "AS": "AS23724",
+      "bandwidth": "3Gbps",
+      "latency": "1ms"
+    },
+    {
+      "id": "KM001",
+      "name": "昆明",
+      "coord": [102.7123, 25.0406],
+      "AS": "AS23724",
+      "bandwidth": "2Gbps",
+      "latency": "2ms"
+    },
+    {
+      "id": "GY001",
+      "name": "贵阳",
+      "coord": [106.7135, 26.5783],
+      "AS": "AS23724",
+      "bandwidth": "2Gbps",
+      "latency": "2ms"
+    },
+    {
+      "id": "LS001",
+      "name": "拉萨",
+      "coord": [91.1320, 29.6604],
+      "AS": "AS23724",
+      "bandwidth": "1Gbps",
+      "latency": "5ms"
+    },
+    {
+      "id": "MY001",
+      "name": "绵阳",
+      "coord": [104.6794, 31.4678],
+      "AS": "AS23724",
+      "bandwidth": "1.5Gbps",
+      "latency": "1ms"
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn_001",
+      "points": ["CD002", "CQ002"],
+      "IP": "10.10.1.1",
+      "IPv6": "2001:db8:a::1",
+      "bandwidth": "3Gbps",
+      "latency": "0.5ms"
+    },
+    {
+      "id": "conn_002",
+      "points": ["CD002", "KM001"],
+      "IP": "10.10.1.2",
+      "IPv6": "2001:db8:a::2",
+      "bandwidth": "2Gbps",
+      "latency": "1ms"
+    },
+    {
+      "id": "conn_003",
+      "points": ["CQ002", "GY001"],
+      "IP": "10.10.1.3",
+      "IPv6": "2001:db8:a::3",
+      "bandwidth": "2Gbps",
+      "latency": "1ms"
+    },
+    {
+      "id": "conn_004",
+      "points": ["KM001", "GY001"],
+      "IP": "10.10.1.4",
+      "IPv6": "2001:db8:a::4",
+      "bandwidth": "1.5Gbps",
+      "latency": "1.5ms"
+    },
+    {
+      "id": "conn_005",
+      "points": ["CD002", "LS001"],
+      "IP": "10.10.1.5",
+      "IPv6": "2001:db8:a::5",
+      "bandwidth": "800Mbps",
+      "latency": "3ms"
+    },
+    {
+      "id": "conn_006",
+      "points": ["CD002", "MY001"],
+      "IP": "10.10.1.6",
+      "IPv6": "2001:db8:a::6",
+      "bandwidth": "1.5Gbps",
+      "latency": "0.3ms"
+    }
+  ]
+}

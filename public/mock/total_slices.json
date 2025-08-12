@@ -1,0 +1,83 @@
+{
+  "totalSlicesCount": 4096,
+  "slices": [
+    {
+      "id": "physical-network",
+      "name": "物理网",
+      "type": "Physical",
+      "filename": "physical-network.json",
+      "bandwidth": "全网",
+      "status": "正常",
+      "usage": 75,
+      "color": "#8c8c8c",
+      "description": "完整的物理网络拓扑，包含所有城市节点和连接",
+      "priority": 1
+    },
+    {
+      "id": "eMBB-5G",
+      "name": "eMBB-5G增强",
+      "type": "eMBB",
+      "filename": "eMBB-5G.json",
+      "bandwidth": "2Gbps",
+      "status": "正常",
+      "usage": 85,
+      "color": "#52c41a",
+      "description": "增强移动宽带服务，提供高速数据传输",
+      "priority": 2
+    },
+    {
+      "id": "URLLC-industrial",
+      "name": "URLLC-工业控制",
+      "type": "URLLC",
+      "filename": "URLLC-industrial.json",
+      "bandwidth": "800Mbps",
+      "status": "正常",
+      "usage": 45,
+      "color": "#1890ff",
+      "description": "超可靠低延迟通信，适用于工业自动化控制",
+      "priority": 3
+    },
+    {
+      "id": "mMTC-iot",
+      "name": "mMTC-物联网",
+      "type": "mMTC",
+      "filename": "mMTC-iot.json",
+      "bandwidth": "300Mbps",
+      "status": "告警",
+      "usage": 92,
+      "color": "#ff4d4f",
+      "description": "大规模机器类通信，支持海量物联网设备连接",
+      "priority": 4
+    },
+    {
+      "id": "eMBB-video",
+      "name": "eMBB-视频流",
+      "type": "eMBB",
+      "filename": "eMBB-video.json",
+      "bandwidth": "1.5Gbps",
+      "status": "正常",
+      "usage": 78,
+      "color": "#722ed1",
+      "description": "专用于高清视频流传输的增强移动宽带",
+      "priority": 5
+    },
+    {
+      "id": "URLLC-automotive",
+      "name": "URLLC-自动驾驶",
+      "type": "URLLC",
+      "filename": "URLLC-automotive.json",
+      "bandwidth": "600Mbps",
+      "status": "正常",
+      "usage": 35,
+      "color": "#13c2c2",
+      "description": "车联网专用超可靠低延迟通信切片",
+      "priority": 6
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdate": "2025-08-11T00:00:00Z",
+    "totalSlices": 6,
+    "sliceTypes": ["Physical", "eMBB", "URLLC", "mMTC"]
+  }
+}

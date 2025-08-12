@@ -1,0 +1,124 @@
+{
+  "sliceInfo": {
+    "id": "URLLC-industrial",
+    "name": "URLLC-工业控制",
+    "type": "URLLC",
+    "description": "超可靠低时延切片，主要服务工业控制应用"
+  },
+  "cities": [
+    {
+      "id": "SH002",
+      "name": "上海",
+      "coord": [121.4737, 31.2304],
+      "AS": "AS9808",
+      "bandwidth": "2Gbps",
+      "latency": "1ms"
+    },
+    {
+      "id": "SZ002", 
+      "name": "苏州",
+      "coord": [120.5853, 31.2990],
+      "AS": "AS9808",
+      "bandwidth": "1Gbps", 
+      "latency": "1ms"
+    },
+    {
+      "id": "WX001",
+      "name": "无锡",
+      "coord": [120.3019, 31.5741],
+      "AS": "AS9808",
+      "bandwidth": "1Gbps",
+      "latency": "1ms"
+    },
+    {
+      "id": "NJ002",
+      "name": "南京",
+      "coord": [118.7969, 32.0603],
+      "AS": "AS9808",
+      "bandwidth": "1.5Gbps",
+      "latency": "1ms"
+    },
+    {
+      "id": "HZ002",
+      "name": "杭州",
+      "coord": [120.1551, 30.2741],
+      "AS": "AS9808",
+      "bandwidth": "1.5Gbps",
+      "latency": "1ms"
+    },
+    {
+      "id": "NB001",
+      "name": "宁波",
+      "coord": [121.5440, 29.8683],
+      "AS": "AS9808",
+      "bandwidth": "800Mbps",
+      "latency": "1ms"
+    },
+    {
+      "id": "CZ001",
+      "name": "常州",
+      "coord": [119.9461, 31.7720],
+      "AS": "AS9808", 
+      "bandwidth": "800Mbps",
+      "latency": "1ms"
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn_001",
+      "points": ["SH002", "SZ002"],
+      "IP": "10.1.1.1",
+      "IPv6": "2001:db8:1::1",
+      "bandwidth": "1Gbps",
+      "latency": "0.5ms"
+    },
+    {
+      "id": "conn_002",
+      "points": ["SH002", "HZ002"],
+      "IP": "10.1.1.2",
+      "IPv6": "2001:db8:1::2",
+      "bandwidth": "1.5Gbps",
+      "latency": "1ms"
+    },
+    {
+      "id": "conn_003",
+      "points": ["SZ002", "WX001"],
+      "IP": "10.1.1.3",
+      "IPv6": "2001:db8:1::3",
+      "bandwidth": "800Mbps",
+      "latency": "0.3ms"
+    },
+    {
+      "id": "conn_004",
+      "points": ["SZ002", "NJ002"],
+      "IP": "10.1.1.4",
+      "IPv6": "2001:db8:1::4",
+      "bandwidth": "1Gbps",
+      "latency": "0.8ms"
+    },
+    {
+      "id": "conn_005",
+      "points": ["HZ002", "NB001"],
+      "IP": "10.1.1.5",
+      "IPv6": "2001:db8:1::5",
+      "bandwidth": "800Mbps",
+      "latency": "0.6ms"
+    },
+    {
+      "id": "conn_006",
+      "points": ["WX001", "CZ001"],
+      "IP": "10.1.1.6",
+      "IPv6": "2001:db8:1::6",
+      "bandwidth": "600Mbps",
+      "latency": "0.4ms"
+    },
+    {
+      "id": "conn_007",
+      "points": ["NJ002", "CZ001"],
+      "IP": "10.1.1.7",
+      "IPv6": "2001:db8:1::7",
+      "bandwidth": "800Mbps",
+      "latency": "0.7ms"
+    }
+  ]
+}

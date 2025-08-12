@@ -1,0 +1,129 @@
+{
+  "currentIssues": [
+    {
+      "id": "P010",
+      "type": "中断",
+      "description": "北京-上海链路连通性探测失败",
+      "severity": "高",
+      "location": "北京-上海",
+      "createTime": "2024-08-11 14:30:25",
+      "status": "待处理",
+      "slice": "eMBB-5G增强"
+    },
+    {
+      "id": "P009",
+      "type": "延迟下降",
+      "description": "上海-深圳链路延迟15ms，低于阈值50ms",
+      "severity": "中",
+      "location": "上海-深圳",
+      "createTime": "2024-08-11 13:45:12",
+      "status": "处理中",
+      "slice": "URLLC-工业控制"
+    },
+    {
+      "id": "P008",
+      "type": "中断",
+      "description": "深圳-成都链路连通性探测失败",
+      "severity": "高",
+      "location": "深圳-成都",
+      "createTime": "2024-08-11 12:20:08",
+      "status": "已解决",
+      "slice": "eMBB-视频流"
+    },
+    {
+      "id": "P007",
+      "type": "延迟下降",
+      "description": "成都-重庆链路延迟8ms，低于阈值30ms",
+      "severity": "低",
+      "location": "成都-重庆",
+      "createTime": "2024-08-11 11:15:33",
+      "status": "已解决",
+      "slice": "物理网"
+    },
+    {
+      "id": "P006",
+      "type": "中断",
+      "description": "西安-兰州链路连通性探测失败",
+      "severity": "高",
+      "location": "西安-兰州",
+      "createTime": "2024-08-11 10:30:45",
+      "status": "已解决",
+      "slice": "mMTC-物联网"
+    },
+    {
+      "id": "P005",
+      "type": "延迟下降",
+      "description": "北京-天津链路延迟12ms，低于阈值40ms",
+      "severity": "中",
+      "location": "北京-天津",
+      "createTime": "2024-08-11 09:45:18",
+      "status": "已解决",
+      "slice": "URLLC-自动驾驶"
+    },
+    {
+      "id": "P004",
+      "type": "中断",
+      "description": "广州-深圳链路连通性探测失败",
+      "severity": "高",
+      "location": "广州-深圳",
+      "createTime": "2024-08-11 08:20:05",
+      "status": "已解决",
+      "slice": "eMBB-5G增强"
+    },
+    {
+      "id": "P003",
+      "type": "延迟下降",
+      "description": "杭州-宁波链路延迟18ms，低于阈值60ms",
+      "severity": "中",
+      "location": "杭州-宁波",
+      "createTime": "2024-08-11 07:15:30",
+      "status": "已解决",
+      "slice": "物理网"
+    },
+    {
+      "id": "P002",
+      "type": "中断",
+      "description": "南京-苏州链路连通性探测失败",
+      "severity": "中",
+      "location": "南京-苏州",
+      "createTime": "2024-08-11 06:45:15",
+      "status": "已解决",
+      "slice": "URLLC-工业控制"
+    },
+    {
+      "id": "P001",
+      "type": "延迟下降",
+      "description": "苏州-无锡链路延迟5ms，低于阈值25ms",
+      "severity": "低",
+      "location": "苏州-无锡",
+      "createTime": "2024-08-11 05:30:22",
+      "status": "已解决",
+      "slice": "物理网"
+    }
+  ],
+  "alertStats": {
+    "total": 10,
+    "high": 4,
+    "medium": 4,
+    "low": 2,
+    "processing": 4,
+    "pending": 2,
+    "resolved": 2,
+    "monitoring": 1,
+    "confirmed": 1
+  },
+  "alertTypes": {
+    "延迟下降": { "count": 5, "color": "warning" },
+    "中断": { "count": 5, "color": "danger" }
+  },
+  "severityMapping": {
+    "高": "danger",
+    "中": "warning",
+    "低": "info"
+  },
+  "statusMapping": {
+    "处理中": "warning",
+    "待处理": "danger",
+    "已解决": "success"
+  }
+}

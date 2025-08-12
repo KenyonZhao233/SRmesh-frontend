@@ -1,0 +1,35 @@
+{
+  "sliceName": "eMBB-视频流",
+  "pingList": [
+    {
+      "src": "10.2.1.1",
+      "dst": "10.2.2.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    },
+    {
+      "src": "10.2.2.1",
+      "dst": "10.2.3.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    },
+    {
+      "src": "10.2.3.1",
+      "dst": "10.2.4.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    },
+    {
+      "src": "10.2.4.1",
+      "dst": "10.2.5.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    },
+    {
+      "src": "10.2.1.1",
+      "dst": "10.2.6.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    }
+  ]
+}

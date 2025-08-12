@@ -1,0 +1,29 @@
+{
+  "sliceName": "URLLC-自动驾驶",
+  "pingList": [
+    {
+      "src": "172.20.1.1",
+      "dst": "172.20.2.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    },
+    {
+      "src": "172.20.2.1",
+      "dst": "172.20.3.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    },
+    {
+      "src": "172.20.3.1",
+      "dst": "172.20.4.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    },
+    {
+      "src": "172.20.1.1",
+      "dst": "172.20.5.1",
+      "interval": "300s",
+      "protocol": "TCP"
+    }
+  ]
+}
