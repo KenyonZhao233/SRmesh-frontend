@@ -10,57 +10,43 @@
       "id": "GZ002",
       "name": "广州",
       "coord": [113.2644, 23.1291],
-      "AS": "AS4808",
-      "bandwidth": "8Gbps",
-      "latency": "10ms"
+      "AS": "AS4808"
     },
     {
       "id": "SZ003",
       "name": "深圳",
       "coord": [114.0579, 22.5431],
-      "AS": "AS4808",
-      "bandwidth": "8Gbps",
-      "latency": "12ms"
+      "AS": "AS4808"
     },
     {
       "id": "ZH001",
       "name": "珠海",
       "coord": [113.5531, 22.2246],
-      "AS": "AS4808",
-      "bandwidth": "3Gbps",
-      "latency": "15ms"
+      "AS": "AS4808"
     },
     {
       "id": "FS001",
       "name": "佛山",
       "coord": [113.1220, 23.0280],
-      "AS": "AS4808",
-      "bandwidth": "4Gbps",
-      "latency": "12ms"
+      "AS": "AS4808"
     },
     {
       "id": "DG001",
       "name": "东莞",
       "coord": [113.7518, 23.0205],
-      "AS": "AS4808",
-      "bandwidth": "4Gbps",
-      "latency": "13ms"
+      "AS": "AS4808"
     },
     {
       "id": "HK001",
       "name": "香港",
       "coord": [114.1694, 22.3193],
-      "AS": "AS4808",
-      "bandwidth": "6Gbps",
-      "latency": "8ms"
+      "AS": "AS4808"
     },
     {
       "id": "MO001",
       "name": "澳门",
       "coord": [113.5439, 22.1987],
-      "AS": "AS4808",
-      "bandwidth": "2Gbps",
-      "latency": "15ms"
+      "AS": "AS4808"
     }
   ],
   "connections": [
@@ -68,65 +54,49 @@
       "id": "conn_001",
       "points": ["GZ002", "SZ003"],
       "IP": "192.168.10.1",
-      "IPv6": "2001:db8:10::1",
-      "bandwidth": "8Gbps",
-      "latency": "5ms"
+      "IPv6": "2001:db8:10::1"
     },
     {
       "id": "conn_002",
       "points": ["GZ002", "FS001"],
       "IP": "192.168.10.2",
-      "IPv6": "2001:db8:10::2",
-      "bandwidth": "4Gbps",
-      "latency": "3ms"
+      "IPv6": "2001:db8:10::2"
     },
     {
       "id": "conn_003",
       "points": ["SZ003", "DG001"],
       "IP": "192.168.10.3",
-      "IPv6": "2001:db8:10::3",
-      "bandwidth": "4Gbps",
-      "latency": "4ms"
+      "IPv6": "2001:db8:10::3"
     },
     {
       "id": "conn_004",
       "points": ["SZ003", "HK001"],
       "IP": "192.168.10.4",
-      "IPv6": "2001:db8:10::4",
-      "bandwidth": "6Gbps",
-      "latency": "2ms"
+      "IPv6": "2001:db8:10::4"
     },
     {
       "id": "conn_005",
       "points": ["GZ002", "ZH001"],
       "IP": "192.168.10.5",
-      "IPv6": "2001:db8:10::5",
-      "bandwidth": "3Gbps",
-      "latency": "6ms"
+      "IPv6": "2001:db8:10::5"
     },
     {
       "id": "conn_006",
       "points": ["ZH001", "MO001"],
       "IP": "192.168.10.6",
-      "IPv6": "2001:db8:10::6",
-      "bandwidth": "2Gbps",
-      "latency": "1ms"
+      "IPv6": "2001:db8:10::6"
     },
     {
       "id": "conn_007",
       "points": ["FS001", "DG001"],
       "IP": "192.168.10.7",
-      "IPv6": "2001:db8:10::7",
-      "bandwidth": "3Gbps",
-      "latency": "5ms"
+      "IPv6": "2001:db8:10::7"
     },
     {
       "id": "conn_008",
       "points": ["HK001", "MO001"],
       "IP": "192.168.10.8",
-      "IPv6": "2001:db8:10::8",
-      "bandwidth": "2Gbps",
-      "latency": "8ms"
+      "IPv6": "2001:db8:10::8"
     }
   ]
 }

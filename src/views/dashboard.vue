@@ -66,19 +66,49 @@
         </div>
 
         <el-row :gutter="20" class="mgb20 responsive-row chart-row">
-              <el-col :xs="24" :sm="24" :md="17" :lg="17" :xl="17">
-                <el-card shadow="hover" class="responsive-card chart-card map-slice-card">
-                    <div class="card-header">
-                        <p class="card-header-title">切片延迟</p>
-                        <p class="card-header-desc">切片拓扑</p>
+              <el-col :xs="22" :sm="22" :md="16" :lg="16" :xl="16">
+                <el-card shadow="hover" class="responsive-card chart-card map-slice-card beautify-map-card" style="height:100%;display:flex;flex-direction:column;">
+                    <div class="card-header beautify-card-header">
+                        <p class="card-header-title beautify-title">切片延迟</p>
                     </div>
                     <div class="chart-container">
                         <!-- 左半部分：切片可视化 -->
                         <div class="left-component">
                             <div class="slice-visualizer">
-                                <div class="slice-header">
-                                    <h3>切片可视化</h3>
-                                    <p>选择要查看的网络切片</p>
+                                <div class="slice-header" style="display:flex;align-items:center;gap:16px;">
+                                    <div>
+                                        <h3 style="margin-bottom:0;">切片可视化</h3>
+                                        <p style="margin:0;">选择要查看的网络切片</p>
+                                    </div>
+                                    <el-button type="primary" @click="showPingListPopup = true" size="small" style="margin-left:8px;">当前切片探测列表</el-button>
+                                    <el-dialog 
+                                        v-model="showPingListPopup" 
+                                        title="当前切片探测列表" 
+                                        width="720px" 
+                                        :close-on-click-modal="true" 
+                                        :append-to-body="true"
+                                        :z-index="9999"
+                                        :modal="true"
+                                        class="ping-list-dialog"
+                                    >
+                                        <div v-if="isPingListLoading" class="loading-text">
+                                            加载探测数据中...
+                                        </div>
+                                        <div v-else-if="!pingListData?.pingList || pingListData.pingList.length === 0" class="empty-text">
+                                            暂无探测数据
+                                        </div>
+                                        <div v-else class="ping-list">
+                                            <div 
+                                                v-for="ping in pingListData.pingList" 
+                                                :key="ping.id"
+                                                class="ping-item"
+                                            >
+                                                <div class="ping-endpoints">
+                                                    <span class="ping-text">src: {{ ping.src }}, dst: {{ ping.dst }}, interval: {{ ping.interval }}, protocol: {{ ping.protocol }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </el-dialog>
                                 </div>
                                 <div class="zoom-controls">
                                     <button @click="zoomIn" class="zoom-btn">+</button>
@@ -90,7 +120,13 @@
                                         <div 
                                             v-for="(slice, index) in displayedSlices" 
                                             :key="slice.id"
-                                            :class="['slice-layer', { 'active': selectedSlice === slice.id }]"
+                                            :class="[
+                                                'slice-layer', 
+                                                { 
+                                                    'active': selectedSlice === slice.id,
+                                                    'switching': isSliceSwitching && selectedSlice === slice.id
+                                                }
+                                            ]"
                                             :style="getSliceStyle(index)"
                                             @click="selectSlice(slice.id)"
                                             @mouseenter="hoveredSlice = slice.id"
@@ -98,6 +134,14 @@
                                         >
                                             <div class="slice-content">
                                                 <div class="slice-name">{{ slice.name }}</div>
+                                            </div>
+                                            <!-- 警告图标 - 当切片有待处理或处理中的问题时显示 -->
+                                            <div 
+                                                v-if="hasSliceIssues(slice.name)" 
+                                                class="slice-warning-icon"
+                                                title="此切片存在待处理或处理中的问题"
+                                            >
+                                                ⚠️
                                             </div>
                                             <!-- 悬浮提示 - 只显示名字 -->
                                             <div 
@@ -116,89 +160,94 @@
                         </div>
                         <!-- 右半部分：地图/拓扑 -->
                         <div class="right-component">
-                            <v-chart 
-                                class="map-chart" 
-                                :option="viewMode === 'geographic' ? enhancedMapOptions : topologyOptions" 
-                                @click="handleMapClick"
-                                :key="viewMode"
-                            />
-                            <div class="view-mode-switcher">
-                                <div class="switcher-buttons">
-                                    <el-button 
-                                        :type="viewMode === 'geographic' ? 'primary' : 'default'"
-                                        size="small"
-                                        @click="viewMode = 'geographic'"
-                                        class="switcher-btn"
-                                    >
-                                        地理
-                                    </el-button>
-                                    <el-button 
-                                        :type="viewMode === 'topology' ? 'primary' : 'default'"
-                                        size="small"
-                                        @click="viewMode = 'topology'"
-                                        class="switcher-btn"
-                                    >
-                                        拓扑
-                                    </el-button>
-                                </div>
-                                <div class="switcher-description">
-                                    <span class="description-text">
-                                        {{ viewMode === 'geographic' ? '基于地理的网络视图' : '抽象网络拓扑结构图' }}
-                                    </span>
+                            <div class="map-container">
+                                <v-chart 
+                                    class="map-chart beautify-map-chart" 
+                                    :option="viewMode === 'geographic' ? enhancedMapOptions : topologyOptions" 
+                                    @click="handleMapClick"
+                                    :key="viewMode"
+                                />
+                                <!-- 地图内浮动切换按钮 -->
+                                <div class="floating-view-switcher">
+                                    <div class="floating-buttons">
+                                        <el-button 
+                                            :type="viewMode === 'geographic' ? 'primary' : 'default'"
+                                            size="small"
+                                            @click="viewMode = 'geographic'"
+                                            class="floating-btn"
+                                        >
+                                            地理
+                                        </el-button>
+                                        <el-button 
+                                            :type="viewMode === 'topology' ? 'primary' : 'default'"
+                                            size="small"
+                                            @click="viewMode = 'topology'"
+                                            class="floating-btn"
+                                        >
+                                            拓扑
+                                        </el-button>
+                                    </div>
+                                    <div class="floating-description">
+                                        {{ viewMode === 'geographic' ? '地理视图' : '拓扑视图' }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </el-card>
             </el-col>
-            <el-col :xs="24" :sm="24" :md="7" :lg="7" :xl="7">
-                <el-card shadow="hover" class="responsive-card chart-card">
-                    <div class="card-header">
-                        <p class="card-header-title">链路时延</p>
-                        <p class="card-header-desc">24小时实时网络时延趋势</p>
-                        <div v-if="delayDataError" class="retry-section">
-                            <el-button 
-                                type="primary" 
-                                size="small" 
-                                @click="retryLoadDelayData"
-                                :loading="delayDataLoading"
-                            >
-                                重试连接
-                            </el-button>
-                        </div>
-                    </div>
-                    <v-chart class="timeline-chart" :option="timelineOptions" />
-                </el-card>
-            </el-col>
-        </el-row>
-        <el-row :gutter="5" class="mgb20 responsive-row table-row">
-            <el-col :xs="24" :sm="24" :md="16" :lg="16" :xl="16">
-                <el-card shadow="hover" class="responsive-card table-card">
-                    <div class="card-header">
-                        <p class="card-header-title">当前问题</p>
-                        <p class="card-header-desc">当前网络存在的问题</p>
+            <!-- 链路时延浮窗 - 移到行级别以避免被表格遮盖 -->
+            <transition name="fade">
+                <div v-if="showDelayPopup && selectedRoute && selectedRoute !== 'all'" class="delay-popup" :style="delayPopupStyle">
+                    <div class="popup-title">24小时时延</div>
+                    <v-chart
+                        :option="timelineOptions"
+                        style="width: 340px; height: 220px; margin-top: 8px;"
+                    />
+                    <el-button size="mini" type="text" @click="showDelayPopup = false" style="margin-top:8px;">关闭</el-button>
+                </div>
+            </transition>
+            <el-col :xs="26" :sm="26" :md="8" :lg="8" :xl="8">
+                <el-card shadow="hover" class="responsive-card table-card" style="height:100%;display:flex;flex-direction:column;">
+                    <div class="card-header beautify-card-header">
+                        <p class="card-header-title beautify-title">当前问题</p>
                     </div>
                     <div class="table-container">
-                        <el-table :data="currentIssuesData" style="width: 100%" class="responsive-table">
-                            <el-table-column prop="id" label="问题ID" min-width="80" />
-                            <el-table-column prop="type" label="问题类型" min-width="100">
+                        <el-table 
+                            :data="currentIssuesData" 
+                            style="width: 100%" 
+                            class="responsive-table"
+                            @row-click="handleIssueRowClick"
+                            :row-style="{ cursor: 'pointer' }"
+                        >
+                            <el-table-column prop="id" label="问题ID" min-width="60" />
+                            <el-table-column prop="type" label="问题类型" min-width="60">
                                 <template #default="scope">
-                                    <el-tag :type="getIssueTypeColor(scope.row.type)">
-                                        {{ scope.row.type }}
+                                    <el-tag 
+                                        :type="getIssueTypeColor(scope.row.type)"
+                                        :class="{ 'two-line-tag': scope.row.type === '延迟下降' }"
+                                    >
+                                        <span v-if="scope.row.type === '延迟下降'" style="line-height: 1.1; text-align: center; font-size: 10px;">
+                                            延迟<br/>下降
+                                        </span>
+                                        <span v-else>
+                                            {{ scope.row.type }}
+                                        </span>
                                     </el-tag>
                                 </template>
                             </el-table-column>
-                            <el-table-column prop="description" label="问题描述" min-width="200"/>
-                            <el-table-column prop="severity" label="严重程度" min-width="100">
+                            <el-table-column prop="description" label="问题描述" min-width="80"/>
+                            <el-table-column prop="slice" label="所属切片" min-width="60" />
+                            <el-table-column prop="location" label="位置" min-width="80">
                                 <template #default="scope">
-                                    <el-tag :type="getSeverityColor(scope.row.severity)">
-                                        {{ scope.row.severity }}
-                                    </el-tag>
+                                    {{ formatLinkName(scope.row.location, scope.row.slice || selectedSlice) }}
                                 </template>
                             </el-table-column>
-                            <el-table-column prop="slice" label="所属切片" min-width="120" />
-                            <el-table-column prop="location" label="位置" min-width="120" />
-                            <el-table-column prop="createTime" label="发现时间" min-width="180" />
+                            <el-table-column prop="createTime" label="发现时间" min-width="80">
+                                <template #default="scope">
+                                    {{ formatShortTime(scope.row.createTime) }}
+                                </template>
+                            </el-table-column>
                             <el-table-column prop="status" label="状态" min-width="80">
                                 <template #default="scope">
                                     <el-tag :type="getStatusColor(scope.row.status)">
@@ -210,46 +259,68 @@
                     </div>
                 </el-card>
             </el-col>
-            <el-col :xs="24" :sm="24" :md="8" :lg="8" :xl="8">
-                <el-card shadow="hover" class="responsive-card table-card">
-                    <div class="card-header">
-                        <div class="header-content">
-                            <div class="header-left">
-                                <p class="card-header-title">当前切片探测列表</p>
-                                <p class="card-header-desc">{{ pingListData?.sliceName || '加载中...' }}网络连通性探测</p>
-                            </div>
-                            <div class="header-right" v-if="pingListData?.pingList">
-                                <span class="ping-count">{{ pingListData.pingList.length }}对</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <div v-if="isPingListLoading" class="loading-text">
-                            加载探测数据中...
-                        </div>
-                        <div v-else-if="!pingListData?.pingList || pingListData.pingList.length === 0" class="empty-text">
-                            暂无探测数据
-                        </div>
-                        <div v-else class="ping-list">
-                            <div 
-                                v-for="ping in pingListData.pingList" 
-                                :key="ping.id"
-                                class="ping-item"
-                            >
-                                <div class="ping-endpoints">
-                                    <span class="ping-text">src: {{ ping.src }}, dst: {{ ping.dst }}, interval: {{ ping.interval }}, protocol: {{ ping.protocol }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </el-card>
-            </el-col>
+        </el-row>
+        <el-row :gutter="5" class="responsive-row table-row">
         </el-row>
       
     </div>
 </template>
 
 <script setup lang="ts" name="dashboard">
+// 当前切片探测列表弹窗
+import { ref as vueRef } from 'vue';
+const showPingListPopup = vueRef(false);
+
+// 处理地图链路点击，弹出浮窗
+const handleMapClick = (params) => {
+    // 支持 geo-lines 和 graph-edge 两种点击
+    let isLine = false;
+    let routeName = '';
+    if (params.seriesType === 'lines' && params.data && params.data.name) {
+        isLine = true;
+        routeName = params.data.name;
+    } else if (params.dataType === 'edge' && params.data && params.data.source && params.data.target) {
+        isLine = true;
+        routeName = params.data.name || `${params.data.source}↔${params.data.target}`;
+    }
+    if (isLine) {
+        selectedRoute.value = routeName;
+        showDelayPopup.value = true;
+        // 浮窗定位到鼠标点击处
+        nextTick(() => {
+            if (params.event && params.event.event) {
+                const { offsetX, offsetY } = params.event.event;
+                // 获取地图容器的实际偏移
+                const mapEl = document.querySelector('.map-chart');
+                let mapRect = { left: 0, top: 0 };
+                if (mapEl) mapRect = mapEl.getBoundingClientRect();
+                // 浮窗宽高应与样式保持一致
+                const popupW = 420, popupH = 300;
+                // 右移60px
+                let left = mapRect.left + offsetX - popupW / 2 + 360;
+                let top = mapRect.top + offsetY - popupH / 2;
+                // 防止浮窗超出右下边界
+                const winW = window.innerWidth;
+                const winH = window.innerHeight;
+                if (left + popupW > winW) left = winW - popupW - 16;
+                if (left < 0) left = 16;
+                if (top + popupH > winH) top = winH - popupH - 16;
+                if (top < 0) top = 16;
+                delayPopupStyle.value = {
+                    position: 'fixed',
+                    left: left + 'px',
+                    top: top + 'px',
+                    zIndex: 9999
+                };
+            } else {
+                delayPopupStyle.value = { left: '65%', top: '30%', position: 'fixed', zIndex: 9999 };
+            }
+        });
+    } else {
+        showDelayPopup.value = false;
+    }
+    // 其他类型点击不弹窗
+};
 
 import { use, registerMap } from 'echarts/core';
 import { BarChart, LineChart, PieChart, MapChart, ScatterChart, LinesChart, GraphChart } from 'echarts/charts';
@@ -294,19 +365,21 @@ const selectedRoute = ref('');
 // 视图模式切换
 const viewMode = ref('geographic'); // 'geographic' 或 'topology'
 
+// 地图聚焦相关变量
+const mapCenter = ref([104, 35]); // 地图中心坐标
+const mapZoom = ref(1.5); // 地图缩放级别
+
 // 3D切片可视化相关变量
 const selectedSlice = ref('physical-network'); // 默认选择物理网络，使用数据库中的实际名称
 const hoveredSlice = ref(null);
 const zoomLevel = ref(1);
+const isSliceSwitching = ref(false);
 
 // 网络拓扑数据
 const networkTopology = ref(null);
 const isTopologyLoading = ref(true);
 const allSliceTopologies = ref({}); // 存储所有切片的拓扑数据
 
-// 警报数据
-const alertData = ref(null);
-const isAlertLoading = ref(true);
 
 // ping探测数据
 const pingListData = ref({
@@ -319,6 +392,42 @@ const isPingListLoading = ref(false);
 const delayDataLoading = ref(false);
 const delayDataError = ref(null);
 const realDelayData = ref(null);
+
+// 链路时延浮窗相关
+import { nextTick } from 'vue';
+const showDelayPopup = ref(false);
+const delayPopupStyle = ref({});
+const currentLinkDelay = ref(null);
+
+// 计算当前选中链路的时延数据
+watch([selectedRoute, realDelayData], ([route, delayList]) => {
+    if (!route || route === 'all' || !Array.isArray(delayList) || delayList.length === 0) {
+        currentLinkDelay.value = null;
+        return;
+    }
+    // 过滤出该链路的所有时延数据
+    // 标准化函数，去除空格、转小写
+    const normalize = s => (s || '').replace(/\s+/g, '').toLowerCase();
+    const [src, dst] = route.split('-').map(normalize);
+    const linkDelays = delayList.filter(item => {
+        const s1 = normalize(item.src), d1 = normalize(item.dst);
+        return (s1 === src && d1 === dst) || (s1 === dst && d1 === src);
+    });
+    if (!linkDelays.length) {
+        currentLinkDelay.value = null;
+        return;
+    }
+    // 计算平均、最大、最小
+    const delays = linkDelays.map(item => typeof item.delay === 'string' ? parseFloat(item.delay) : item.delay).filter(v => !isNaN(v));
+    if (!delays.length) {
+        currentLinkDelay.value = null;
+        return;
+    }
+    const avg = Math.round(delays.reduce((a, b) => a + b, 0) / delays.length * 100) / 100;
+    const max = Math.max(...delays);
+    const min = Math.min(...delays);
+    currentLinkDelay.value = { avgDelay: avg, maxDelay: max, minDelay: min };
+});
 
 // 缩放控制函数
 const zoomIn = () => {
@@ -346,6 +455,90 @@ const handleZoom = (event) => {
     }
 };
 
+// 处理问题表格行点击事件
+const handleIssueRowClick = async (row) => {
+    console.log('点击问题行:', row);
+    
+    // 1. 切换到对应的切片 - 使用selectSlice确保平滑过渡
+    if (row.slice) {
+        // 根据切片名称找到对应的切片ID
+        const targetSlice = networkSlices.value.find(slice => slice.name === row.slice);
+        if (targetSlice) {
+            console.log('切换到切片:', targetSlice.id);
+            
+            // 使用selectSlice函数来确保平滑过渡
+            selectSlice(targetSlice.id);
+            
+            // 等待切片切换完成
+            await nextTick();
+        }
+    }
+    
+    // 2. 切换到地理视图
+    viewMode.value = 'geographic';
+    
+    // 3. 聚焦到对应的链路
+    if (row.location) {
+        await focusOnLink(row.location);
+    }
+};
+
+// 聚焦到指定链路
+const focusOnLink = async (location) => {
+    console.log('聚焦到链路:', location);
+    
+    // 等待视图切换完成
+    await nextTick();
+    
+    try {
+        // 根据位置ID找到对应的城市坐标
+        const locationParts = location.split('-');
+        if (locationParts.length >= 2) {
+            const city1Id = parseInt(locationParts[0]);
+            const city2Id = parseInt(locationParts[1]);
+            
+            // 从当前切片的城市数据中查找坐标
+            const currentSliceInfo = selectedSliceInfo.value;
+            if (currentSliceInfo && currentSliceInfo.filename) {
+                const sliceKey = currentSliceInfo.filename.replace('.json', '');
+                const sliceData = allSliceTopologies.value[sliceKey];
+                
+                if (sliceData && sliceData.cities) {
+                    const city1 = sliceData.cities.find(c => c.id === city1Id);
+                    const city2 = sliceData.cities.find(c => c.id === city2Id);
+                    
+                    if (city1 && city2) {
+                        // 计算两个城市的中点坐标
+                        const centerLng = (city1.coord[0] + city2.coord[0]) / 2;
+                        const centerLat = (city1.coord[1] + city2.coord[1]) / 2;
+                        
+                        // 设置地图中心为链路中点
+                        mapCenter.value = [centerLng, centerLat];
+                        
+                        // 设置适当的缩放级别
+                        mapZoom.value = 3;
+                        
+                        console.log(`聚焦到链路中点: [${centerLng}, ${centerLat}]`);
+                    } else {
+                        console.warn('未找到城市坐标信息');
+                    }
+                } else {
+                    console.warn('未找到切片数据');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('聚焦链路时出错:', error);
+    }
+};
+
+// 重置地图视图
+const resetMapView = () => {
+    mapCenter.value = [104, 35];
+    mapZoom.value = 1.5;
+    console.log('重置地图视图');
+};
+
 // 网络切片数据 - 从配置文件动态加载
 const networkSlices = ref([]);
 
@@ -354,8 +547,8 @@ const loadSlicesConfiguration = async () => {
     try {
         const response = await fetch('/mock/total_slices.json');
         const data = await response.json();
-        // 按优先级排序，确保物理网络在最前面
-        networkSlices.value = data.slices.sort((a, b) => a.priority - b.priority);
+        // 直接使用配置文件中的顺序，不再按priority排序
+        networkSlices.value = data.slices;
         // 加载总切片数
         if (data.totalSlicesCount) {
             totalSlicesCount.value = data.totalSlicesCount;
@@ -374,25 +567,68 @@ const selectedSliceInfo = computed(() => {
     return networkSlices.value.find(slice => slice.id === selectedSlice.value);
 });
 
+// 预定义的颜色调色板
+const colorPalette = [
+    '#8c8c8c',   // 灰色
+    '#52c41a',   // 绿色 
+    '#1890ff',   // 蓝色
+    '#ff4d4f',   // 红色
+    '#722ed1',   // 紫色
+    '#13c2c2',   // 青色
+    '#faad14',   // 橙色
+    '#f759ab',   // 粉色
+    '#a0d911',   // 青绿色
+    '#40a9ff'    // 浅蓝色
+];
+
+// 根据索引自动分配颜色
+const getSliceColor = (index) => {
+    return colorPalette[index % colorPalette.length];
+};
+
 // 3D切片样式生成
 const getSliceStyle = (index) => {
     // 反转索引，让第一个元素（物理网络）显示在最上面
     const reverseIndex = networkSlices.value.length - 1 - index;
-    const zOffset = reverseIndex * 18; // 物理网络有最大的zOffset
-    const yOffset = -reverseIndex * 8; // 物理网络有最大的yOffset
-    const scale = 1 - reverseIndex * 0.01; // 轻微缩放差异
+    const zOffset = reverseIndex * 12; // 减小Z轴偏移
+    const yOffset = -reverseIndex * 5; // 减小Y轴偏移
+    const scale = 1 - reverseIndex * 0.008; // 减小缩放差异
+    const sliceColor = getSliceColor(index);
     
     return {
         transform: `translateZ(${zOffset}px) translateY(${yOffset}px) scale(${scale})`,
         zIndex: networkSlices.value.length - reverseIndex, // 物理网络有最高的zIndex
-        backgroundColor: networkSlices.value[index]?.color + '20',
-        borderColor: networkSlices.value[index]?.color
+        backgroundColor: sliceColor + '20',
+        borderColor: sliceColor
     };
 };
 
 // 选择切片
 const selectSlice = (sliceId) => {
+    // 设置切换状态
+    isSliceSwitching.value = true;
+    
+    // 添加平滑过渡效果
+    const currentActive = document.querySelector('.slice-layer.active') as HTMLElement;
+    if (currentActive) {
+        currentActive.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    }
+    
     selectedSlice.value = sliceId;
+    
+    // 等待DOM更新后，为新选中的切片添加过渡效果
+    nextTick(() => {
+        const newActive = document.querySelector('.slice-layer.active') as HTMLElement;
+        if (newActive) {
+            newActive.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        }
+        
+        // 延迟重置切换状态，让动画完成
+        setTimeout(() => {
+            isSliceSwitching.value = false;
+        }, 300);
+    });
+    
     // 切换到对应的网络拓扑
     switchSliceTopology(sliceId);
 };
@@ -431,8 +667,8 @@ const loadAllSliceTopologies = async () => {
         
         allSliceTopologies.value = topologies;
         
-        // 设置默认显示的拓扑为物理网络
-        const physicalSlice = networkSlices.value.find(slice => slice.type === 'Physical');
+        // 设置默认显示的拓扑为物理网络（第一个切片）
+        const physicalSlice = networkSlices.value.find(slice => slice.id === 'physical-network');
         if (physicalSlice && topologies[physicalSlice.filename.replace('.json', '')]) {
             networkTopology.value = topologies[physicalSlice.filename.replace('.json', '')];
             console.log(`设置默认拓扑: ${physicalSlice.filename}`);
@@ -508,34 +744,35 @@ const getSliceTopologyKey = (sliceId) => {
     return sliceId;
 };
 
-// 格式化链路名称显示 - 将ID转换为友好的城市名称
-const formatLinkName = (linkId) => {
+// 格式化链路名称显示 - 只在指定切片拓扑查找ID对应的城市名称
+// sliceKey: 切片id或文件名（如 physical-network）
+const formatLinkName = (linkId, sliceKey) => {
     if (!linkId || linkId === 'all') {
         return linkId;
     }
-    
+
     // 解析链路ID (格式: "BJ001-SH002" 或 "0-1")
     const parts = linkId.split('-');
     if (parts.length !== 2) {
         return linkId; // 如果格式不正确，返回原始ID
     }
-    
+
     const [sourceId, targetId] = parts;
-    
-    // 获取当前切片的拓扑数据
-    const currentTopology = networkTopology.value;
-    if (!currentTopology || !currentTopology.cities) {
-        return linkId; // 如果没有拓扑数据，返回原始ID
+
+    // 只在指定切片拓扑查找
+    let topo = null;
+    if (sliceKey && allSliceTopologies.value && allSliceTopologies.value[sliceKey]) {
+        topo = allSliceTopologies.value[sliceKey];
+    } else if (networkTopology.value) {
+        topo = networkTopology.value;
     }
-    
-    // 查找对应的城市名称
-    const sourceCity = currentTopology.cities.find(city => city.id === sourceId);
-    const targetCity = currentTopology.cities.find(city => city.id === targetId);
-    
-    if (sourceCity && targetCity) {
-        return `${sourceCity.name} ↔ ${targetCity.name}`;
+    if (topo && Array.isArray(topo.cities)) {
+        const sourceCity = topo.cities.find(city => String(city.id) === String(sourceId));
+        const targetCity = topo.cities.find(city => String(city.id) === String(targetId));
+        if (sourceCity && targetCity) {
+            return `${sourceCity.name} ↔ ${targetCity.name}`;
+        }
     }
-    
     // 如果找不到对应的城市，返回原始ID
     return linkId;
 };
@@ -543,20 +780,6 @@ const formatLinkName = (linkId) => {
 // 保留原来的函数名作为兼容
 const loadNetworkTopology = loadAllSliceTopologies;
 
-// 加载警报数据
-const loadAlertData = async () => {
-    try {
-        isAlertLoading.value = true;
-        const response = await fetch('/mock/alert.json');
-        const data = await response.json();
-        alertData.value = data;
-        console.log('警报数据加载成功:', data);
-    } catch (error) {
-        console.error('加载警报数据失败:', error);
-    } finally {
-        isAlertLoading.value = false;
-    }
-};
 
 
 // 加载当前切片的ping探测数据
@@ -755,6 +978,46 @@ const enhancedMapOptions = computed(() => {
 
     const processedConnections = processConnections(connections, cities);
 
+    // 获取有问题的链路位置信息
+    const getProblemLinks = () => {
+        const problemLinks = new Set();
+        currentIssuesData.value.forEach(issue => {
+            // 只处理待处理的中断和延迟下降问题
+            if ((issue.type === '中断' || issue.type === '延迟下降') && 
+                issue.status === '待处理' && issue.location) {
+                problemLinks.add(issue.location);
+            }
+        });
+        return problemLinks;
+    };
+
+    const problemLinks = getProblemLinks();
+
+    // 检查连接是否有问题，返回问题详情
+    const getConnectionProblemInfo = (connection) => {
+        if (!connection.name) return null;
+        
+        const connectionId = connection.name;
+        
+        // 查找匹配的问题
+        for (const issue of currentIssuesData.value) {
+            if ((issue.type === '中断' || issue.type === '延迟下降') && 
+                (issue.status === '待处理' || issue.status === '处理中') && 
+                issue.location) {
+                
+                const problemLocationStr = String(issue.location);
+                if (connectionId.includes(problemLocationStr) || problemLocationStr.includes(connectionId)) {
+                    return {
+                        type: issue.type,
+                        status: issue.status,
+                        severity: issue.severity
+                    };
+                }
+            }
+        }
+        return null;
+    };
+
     // 节点防重叠处理函数
     const adjustNodePositions = (cities) => {
         const minDistance = 1.5; // 最小距离阈值（经纬度单位）
@@ -834,25 +1097,6 @@ const enhancedMapOptions = computed(() => {
         return 30;
     };
 
-    const getLineColor = (conn, index) => {
-        // 统一使用绿色
-        return '#00ff00';
-    };
-
-    const getLineWidth = (conn, index) => {
-        // 统一线宽
-        return 2;
-    };
-
-    const hasAnimation = (conn) => {
-        // 不预设重要连接，统一无动画
-        return false;
-    };
-
-    const getAnimationPeriod = (conn) => {
-        // 统一动画周期（虽然现在不使用）
-        return 6;
-    };
 
     return {
         tooltip: {
@@ -860,57 +1104,57 @@ const enhancedMapOptions = computed(() => {
             formatter: function(params) {
                 if (params.seriesType === 'lines') {
                     const conn = processedConnections.find(c => c.name === params.data.name);
-                    if (conn) {
-                        // 获取友好的链路名称显示
-                        let friendlyLinkName = conn.name;
+                    let tooltipContent = `<div style="font-weight: bold;">${formatLinkName(params.data.name, selectedSlice)}</div>`;
+                    
+                    // 检查是否有问题信息
+                    if (params.data.problemInfo) {
+                        const issue = currentIssuesData.value.find(item => {
+                            if (!item.location) return false;
+                            const problemLocation = String(item.location);
+                            const connectionName = params.data.name;
+                            // 精确匹配位置信息
+                            return connectionName.includes(problemLocation) || problemLocation.includes(connectionName) ||
+                                   (connectionName.split('-').length >= 2 && problemLocation.split('-').length >= 2 &&
+                                    connectionName.split('-')[0] === problemLocation.split('-')[0] &&
+                                    connectionName.split('-')[1] === problemLocation.split('-')[1]);
+                        });
                         
-                        // 解析链路ID (格式: "BJ001-SH002" 或 "0-1")
-                        const parts = conn.name.split('-');
-                        if (parts.length === 2) {
-                            const [sourceId, targetId] = parts;
-                            
-                            // 获取当前切片的拓扑数据
-                            const currentTopology = networkTopology.value;
-                            if (currentTopology && currentTopology.cities) {
-                                // 查找对应的城市名称 - 支持字符串ID和数字ID
-                                let sourceCity, targetCity;
-                                
-                                // 尝试按字符串ID查找
-                                sourceCity = currentTopology.cities.find(city => city.id === sourceId);
-                                targetCity = currentTopology.cities.find(city => city.id === targetId);
-                                
-                                // 如果没找到，尝试按数字ID查找
-                                if (!sourceCity || !targetCity) {
-                                    const sourceNumId = parseInt(sourceId);
-                                    const targetNumId = parseInt(targetId);
-                                    if (!isNaN(sourceNumId) && !isNaN(targetNumId)) {
-                                        sourceCity = currentTopology.cities.find(city => city.id === sourceNumId);
-                                        targetCity = currentTopology.cities.find(city => city.id === targetNumId);
-                                    }
-                                }
-                                
-                                if (sourceCity && targetCity) {
-                                    friendlyLinkName = `${sourceCity.name} ↔ ${targetCity.name}`;
-                                }
-                            }
+                        if (issue) {
+                            tooltipContent += `<div style="margin-top: 8px; padding: 8px; background: #fff2f0; border-left: 3px solid #ff4d4f;">`;
+                            tooltipContent += `<div style="color: #ff4d4f; font-weight: bold;">⚠️ 警告信息</div>`;
+                            tooltipContent += `<div><strong>问题ID:</strong> ${issue.id}</div>`;
+                            tooltipContent += `<div><strong>类型:</strong> ${issue.type}</div>`;
+                            tooltipContent += `<div><strong>状态:</strong> ${issue.status}</div>`;
+                            tooltipContent += `<div><strong>描述:</strong> ${issue.description}</div>`;
+                            tooltipContent += `<div><strong>严重性:</strong> ${issue.severity}</div>`;
+                            tooltipContent += `</div>`;
                         }
-                        
-                        return `
-                            <div style="font-weight: bold;">${friendlyLinkName}</div>
-                            <div>IP: ${conn.IP || 'N/A'}</div>
-                            <div>IPv6: ${conn.IPv6 || 'N/A'}</div>
-                        `;
+                    } else if (conn) {
+                        // 正常连接信息
+                        tooltipContent += `<div>IP: ${conn.IP || 'N/A'}</div>`;
+                        tooltipContent += `<div>IPv6: ${conn.IPv6 || 'N/A'}</div>`;
                     }
+                    
+                    return tooltipContent;
                 } else if (params.seriesType === 'scatter') {
-                    return `<div style="font-weight: bold;">${params.data.name}</div>`;
+                    // 检查是否是警告标记
+                    if (params.data.name && params.data.name.includes('警告') && params.data.issueInfo) {
+                        const issue = params.data.issueInfo;
+                        let tooltipContent = `<div style="font-weight: bold; color: #ff4d4f;">⚠️ 问题警告</div>`;
+                        tooltipContent += `<div><strong>问题ID:</strong> ${issue.id}</div>`;
+                        tooltipContent += `<div><strong>报告时间:</strong> ${issue.createTime}</div>`;
+                        return tooltipContent;
+                    } else {
+                        return `<div style="font-weight: bold;">${params.data.name}</div>`;
+                    }
                 }
                 return params.name;
             }
         },
         geo: {
             map: 'china',
-            center: [104, 35],
-            zoom: 1.5,
+            center: mapCenter.value,
+            zoom: mapZoom.value,
             roam: true,
             scaleLimit: {
                 min: 0.3,
@@ -919,13 +1163,42 @@ const enhancedMapOptions = computed(() => {
             layoutCenter: ['50%', '50%'],
             layoutSize: '70%',
             itemStyle: {
-                areaColor: '#e0f3ff',
-                borderColor: '#b3d9ff',
-                borderWidth: 1
+                areaColor: {
+                    type: 'linear',
+                    x: 0,
+                    y: 0,
+                    x2: 1,
+                    y2: 1,
+                    colorStops: [
+                        { offset: 0, color: '#fafafa' },
+                        { offset: 0.5, color: '#f5f5f5' },
+                        { offset: 1, color: '#f0f0f0' }
+                    ]
+                },
+                borderColor: '#d9d9d9',
+                borderWidth: 1.5,
+                shadowColor: 'rgba(0, 0, 0, 0.1)',
+                shadowBlur: 6,
+                shadowOffsetX: 1,
+                shadowOffsetY: 1
             },
             emphasis: {
                 itemStyle: {
-                    areaColor: '#cce8ff'
+                    areaColor: {
+                        type: 'linear',
+                        x: 0,
+                        y: 0,
+                        x2: 1,
+                        y2: 1,
+                        colorStops: [
+                            { offset: 0, color: '#f5f5f5' },
+                            { offset: 0.5, color: '#f0f0f0' },
+                            { offset: 1, color: '#e8e8e8' }
+                        ]
+                    },
+                    borderColor: '#bfbfbf',
+                    shadowBlur: 8,
+                    shadowColor: 'rgba(0, 0, 0, 0.15)'
                 }
             }
         },
@@ -935,22 +1208,93 @@ const enhancedMapOptions = computed(() => {
                 name: '网络连接',
                 type: 'lines',
                 coordinateSystem: 'geo',
-                data: adjustedConnections.map((conn, index) => ({
-                    name: conn.name,
-                    coords: conn.coords,
-                    lineStyle: {
-                        color: getLineColor(conn, index),
-                        width: getLineWidth(conn, index),
-                        type: 'solid'
-                    },
-                    effect: {
-                        show: hasAnimation(conn),
-                        period: getAnimationPeriod(conn),
-                        trailLength: 0,
-                        symbol: 'pin',
-                        symbolSize: 3 // 统一动画符号大小
+                data: adjustedConnections.map((conn, index) => {
+                    const problemInfo = getConnectionProblemInfo(conn);
+                    
+                    let lineColor = {
+                        type: 'linear',
+                        x: 0,
+                        y: 0,
+                        x2: 1,
+                        y2: 0,
+                        colorStops: [
+                            { offset: 0, color: '#52c41a' },
+                            { offset: 0.5, color: '#73d13d' },
+                            { offset: 1, color: '#52c41a' }
+                        ]
+                    };
+                    let lineWidth = 2.5;
+                    let showWarning = false;
+                    let warningColor = '#ff4d4f';
+                    let shadowColor = 'rgba(82, 196, 26, 0.3)';
+                    let shadowBlur = 3;
+                    
+                    if (problemInfo) {
+                        lineWidth = 4; // 问题链路加粗
+                        showWarning = true;
+                        
+                        if (problemInfo.status === '处理中') {
+                            // 处理中状态：橙色渐变
+                            lineColor = {
+                                type: 'linear',
+                                x: 0,
+                                y: 0,
+                                x2: 1,
+                                y2: 0,
+                                colorStops: [
+                                    { offset: 0, color: '#fa8c16' },
+                                    { offset: 0.5, color: '#ffa940' },
+                                    { offset: 1, color: '#fa8c16' }
+                                ]
+                            };
+                            warningColor = '#fa8c16';
+                            shadowColor = 'rgba(250, 140, 22, 0.5)';
+                            shadowBlur = 6;
+                        } else if (problemInfo.status === '待处理') {
+                            // 待处理状态：红色渐变
+                            lineColor = {
+                                type: 'linear',
+                                x: 0,
+                                y: 0,
+                                x2: 1,
+                                y2: 0,
+                                colorStops: [
+                                    { offset: 0, color: '#ff4d4f' },
+                                    { offset: 0.5, color: '#ff7875' },
+                                    { offset: 1, color: '#ff4d4f' }
+                                ]
+                            };
+                            warningColor = '#ff4d4f';
+                            shadowColor = 'rgba(255, 77, 79, 0.6)';
+                            shadowBlur = 8;
+                        }
                     }
-                })),
+                    
+                    return {
+                        name: conn.name,
+                        coords: conn.coords,
+                        // 添加问题信息到数据中，供tooltip使用
+                        problemInfo: problemInfo,
+                        lineStyle: {
+                            color: lineColor,
+                            width: lineWidth,
+                            type: 'solid',
+                            shadowColor: shadowColor,
+                            shadowBlur: shadowBlur,
+                            shadowOffsetX: 1,
+                            shadowOffsetY: 1
+                        },
+                        effect: {
+                            show: showWarning,
+                            period: 1.5,
+                            trailLength: 0,
+                            symbol: 'circle',
+                            symbolSize: 18,
+                            color: warningColor,
+                            constantSpeed: 40
+                        }
+                    };
+                }),
                 emphasis: {
                     lineStyle: {
                         width: 6,
@@ -965,13 +1309,50 @@ const enhancedMapOptions = computed(() => {
                 type: 'scatter',
                 coordinateSystem: 'geo',
                 symbol: 'circle',
-                symbolSize: 12, // 再小一半的节点大小
+                symbolSize: 14,
                 itemStyle: {
-                    color: '#000000', // 黑色节点
+                    color: {
+                        type: 'radial',
+                        x: 0.5,
+                        y: 0.5,
+                        r: 0.5,
+                        colorStops: [
+                            { offset: 0, color: '#595959' },
+                            { offset: 0.7, color: '#434343' },
+                            { offset: 1, color: '#262626' }
+                        ]
+                    },
                     borderColor: '#ffffff',
-                    borderWidth: 1,
-                    shadowBlur: 2,
-                    shadowColor: 'rgba(0, 0, 0, 0.2)'
+                    borderWidth: 2,
+                    shadowBlur: 4,
+                    shadowColor: 'rgba(89, 89, 89, 0.4)',
+                    shadowOffsetX: 1,
+                    shadowOffsetY: 1
+                },
+                emphasis: {
+                    label: {
+                        show: true, // 悬停时显示标签
+                        fontSize: 16,
+                        fontWeight: 'bold'
+                    },
+                    itemStyle: {
+                        color: {
+                            type: 'radial',
+                            x: 0.5,
+                            y: 0.5,
+                            r: 0.5,
+                            colorStops: [
+                                { offset: 0, color: '#6b6b6b' },
+                                { offset: 0.7, color: '#525252' },
+                                { offset: 1, color: '#363636' }
+                            ]
+                        },
+                        borderColor: '#ffffff',
+                        borderWidth: 3,
+                        shadowBlur: 8,
+                        shadowColor: 'rgba(89, 89, 89, 0.6)',
+                        scale: 1.3
+                    }
                 },
                 data: adjustedCities.map((city, index) => {
                     console.log(`处理城市节点 ${index}: ${city.name}, 坐标: [${city.coord[0]}, ${city.coord[1]}]`);
@@ -990,19 +1371,99 @@ const enhancedMapOptions = computed(() => {
                     fontSize: 14,
                     color: '#000',
                     fontWeight: 'bold'
+                }
+            },
+            // 警告感叹号系列 - 在有问题的链路中点显示
+            {
+                name: '警告标记',
+                type: 'scatter',
+                coordinateSystem: 'geo',
+                symbol: 'circle',
+                symbolSize: 24,
+                itemStyle: {
+                    color: {
+                        type: 'radial',
+                        x: 0.5,
+                        y: 0.5,
+                        r: 0.5,
+                        colorStops: [
+                            { offset: 0, color: '#ffffff' },
+                            { offset: 0.7, color: '#fff2f0' },
+                            { offset: 1, color: '#ffebe8' }
+                        ]
+                    },
+                    borderColor: {
+                        type: 'linear',
+                        x: 0,
+                        y: 0,
+                        x2: 1,
+                        y2: 1,
+                        colorStops: [
+                            { offset: 0, color: '#ff4d4f' },
+                            { offset: 1, color: '#cf1322' }
+                        ]
+                    },
+                    borderWidth: 3,
+                    shadowBlur: 8,
+                    shadowColor: 'rgba(255, 77, 79, 0.5)',
+                    shadowOffsetX: 2,
+                    shadowOffsetY: 2
+                },
+                data: adjustedConnections.filter(conn => {
+                    const problemInfo = getConnectionProblemInfo(conn);
+                    return problemInfo !== null;
+                }).map(conn => {
+                    // 使用 adjustedConnections 中已经微调后的坐标计算中点
+                    const startCoord = conn.coords[0];
+                    const endCoord = conn.coords[1];
+                    const midLng = (startCoord[0] + endCoord[0]) / 2;
+                    const midLat = (startCoord[1] + endCoord[1]) / 2;
+                    
+                    // 找到对应的问题详细信息
+                    const issue = currentIssuesData.value.find(item => {
+                        if (!item.location) return false;
+                        const problemLocation = String(item.location);
+                        const connectionName = conn.name;
+                        return connectionName.includes(problemLocation) || problemLocation.includes(connectionName) ||
+                               (connectionName.split('-').length >= 2 && problemLocation.split('-').length >= 2 &&
+                                connectionName.split('-')[0] === problemLocation.split('-')[0] &&
+                                connectionName.split('-')[1] === problemLocation.split('-')[1]);
+                    });
+                    
+                    return {
+                        name: `${conn.name}-警告`,
+                        coord: [midLng, midLat],
+                        value: [midLng, midLat, '⚠️'],
+                        // 添加问题详细信息供 tooltip 使用
+                        issueInfo: issue ? {
+                            id: issue.id,
+                            createTime: issue.createTime,
+                            type: issue.type,
+                            status: issue.status
+                        } : null
+                    };
+                }).filter(item => item !== undefined),
+                label: {
+                    show: true,
+                    position: 'inside',
+                    formatter: '⚠️',
+                    fontSize: 14,
+                    color: '#ff4d4f',
+                    fontWeight: 'bold',
+                    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+                    textShadowBlur: 2
                 },
                 emphasis: {
-                    label: {
-                        show: true, // 悬停时显示标签
-                        fontSize: 16,
-                        fontWeight: 'bold'
-                    },
                     itemStyle: {
-                        color: '#333333', // 悬停时稍微浅一点的黑色
-                        borderColor: '#ffffff',
-                        borderWidth: 4,
                         shadowBlur: 15,
-                        shadowColor: 'rgba(0, 0, 0, 0.6)'
+                        shadowColor: 'rgba(255, 77, 79, 0.8)',
+                        scale: 1.2,
+                        borderWidth: 4,
+                        borderColor: '#cf1322'
+                    },
+                    label: {
+                        fontSize: 16,
+                        textShadowBlur: 4
                     }
                 }
             }
@@ -1014,6 +1475,14 @@ const enhancedMapOptions = computed(() => {
                 },
                 saveAsImage: {
                     title: '保存为图片'
+                },
+                myResetView: {
+                    show: true,
+                    title: '重置视图',
+                    icon: 'M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0M12 1v6l3-3M12 23v-6l-3 3',
+                    onclick: () => {
+                        resetMapView();
+                    }
                 }
             },
             right: 15,
@@ -1135,52 +1604,52 @@ const topologyOptions = computed(() => {
         console.log('处理cities和connections数据');
         const { cities, connections: sliceConnections } = currentSliceTopology;
         
-        // 直接将cities转换为节点
-        nodes = cities.map(city => ({
-            id: city.name,
-            name: city.name
-        }));
-        
-        // 根据connections的points字段生成连接关系
+        // 用 name 作为唯一标识，禁止用 id/index
+        // 若 name 有重复，自动加后缀保证唯一
+        const nameCount = {};
+        nodes = cities.map(city => {
+            let uniqueName = city.name;
+            if (nameCount[uniqueName]) {
+                nameCount[uniqueName]++;
+                uniqueName = `${uniqueName}_${nameCount[uniqueName]}`;
+            } else {
+                nameCount[uniqueName] = 1;
+            }
+            city._uniqueName = uniqueName;
+            return {
+                name: uniqueName
+            };
+        });
+        // 连接关系全部用唯一 name
         const allConnections = [];
         sliceConnections.forEach(conn => {
             const points = conn.points;
-            
-            // 如果只有两个点，直接连接
             if (points.length === 2) {
                 const sourceCity = cities.find(c => c.id === points[0]);
                 const targetCity = cities.find(c => c.id === points[1]);
-                
                 if (sourceCity && targetCity) {
                     allConnections.push({
-                        source: sourceCity.name,
-                        target: targetCity.name,
-                        name: `${sourceCity.id}-${targetCity.id}` // 使用ID格式
+                        source: sourceCity._uniqueName,
+                        target: targetCity._uniqueName,
+                        name: `${sourceCity.id}-${targetCity.id}` // 使用ID而不是名称，与地理视图保持一致
                     });
                 }
-            }
-            // 如果有多个点，两两相连
-            else if (points.length > 2) {
+            } else if (points.length > 2) {
                 for (let i = 0; i < points.length; i++) {
                     for (let j = i + 1; j < points.length; j++) {
-                        const point1 = points[i];
-                        const point2 = points[j];
-                        
-                        const city1 = cities.find(c => c.id === point1);
-                        const city2 = cities.find(c => c.id === point2);
-                        
+                        const city1 = cities.find(c => c.id === points[i]);
+                        const city2 = cities.find(c => c.id === points[j]);
                         if (city1 && city2) {
                             allConnections.push({
-                                source: city1.name,
-                                target: city2.name,
-                                name: `${city1.id}-${city2.id}` // 使用ID格式
+                                source: city1._uniqueName,
+                                target: city2._uniqueName,
+                                name: `${city1.id}-${city2.id}` // 使用ID而不是名称，与地理视图保持一致
                             });
                         }
                     }
                 }
             }
         });
-        
         connections = allConnections;
         console.log(`处理完成: ${nodes.length}个节点, ${connections.length}个连接`);
         
@@ -1190,23 +1659,38 @@ const topologyOptions = computed(() => {
         connections = currentSliceTopology.connections || currentSliceTopology.links || [];
     } else {
         console.log('数据结构不匹配，使用默认数据');
-        // 简单的默认数据
-        nodes = [
-            { id: 'node1', name: '节点1' },
-            { id: 'node2', name: '节点2' },
-            { id: 'node3', name: '节点3' },
-            { id: 'node4', name: '节点4' }
-        ];
-        connections = [
-            { source: 'node1', target: 'node2', name: '1' },
-            { source: 'node2', target: 'node3', name: '2' },
-            { source: 'node3', target: 'node4', name: '3' },
-            { source: 'node1', target: 'node4', name: '4' }
-        ];
     }
 
     console.log('使用的节点数据:', nodes);
     console.log('使用的连接数据:', connections);
+    console.log('当前问题数据:', currentIssuesData.value);
+
+    // 检查连接是否有问题，返回问题详情 - 与地理视图使用完全相同的逻辑
+    const getConnectionProblemInfo = (connection) => {
+        if (!connection.name) return null;
+        
+        const connectionId = connection.name;
+        
+        // 查找匹配的问题
+        for (const issue of currentIssuesData.value) {
+            if ((issue.type === '中断' || issue.type === '延迟下降') && 
+                (issue.status === '待处理' || issue.status === '处理中') && 
+                issue.location) {
+                
+                const problemLocationStr = String(issue.location);
+                // 使用与地理视图完全相同的匹配逻辑
+                if (connectionId.includes(problemLocationStr) || problemLocationStr.includes(connectionId)) {
+                    console.log(`拓扑图发现问题连接: ${connectionId} 匹配问题: ${problemLocationStr}`);
+                    return {
+                        type: issue.type,
+                        status: issue.status,
+                        severity: issue.severity
+                    };
+                }
+            }
+        }
+        return null;
+    };
 
     if (!nodes || nodes.length === 0) {
         return {
@@ -1240,23 +1724,53 @@ const topologyOptions = computed(() => {
             };
         });
 
-        // 直接处理连接数据
-        const processedLinks = connections.map((conn, index) => {
+        // 直接处理连接数据 - 使用 graph 类型的正确语法
+        const processedLinks = connections.map((conn) => {
+            // 使用与地理视图完全相同的问题检测逻辑
+            const problemInfo = getConnectionProblemInfo(conn);
+            
+            let lineColor = '#00ff00'; // 默认绿色，与地理视图保持一致
+            let lineWidth = 3;
+            
+            if (problemInfo) {
+                lineWidth = 6; // 问题链路加粗，与地理视图一致
+                
+                if (problemInfo.status === '处理中') {
+                    // 未知状态：橙色
+                    lineColor = '#fa8c16';
+                } else if (problemInfo.status === '待处理') {
+                    // 不可用/异常状态：红色
+                    lineColor = '#ff4d4f';
+                }
+                console.log(`拓扑图问题连接 ${conn.name} 设置颜色: ${lineColor}`);
+            }
+            
+            // 在 graph 类型中，需要使用 lineStyle 属性
             return {
-                source: conn.source || processedNodes[0]?.id,
-                target: conn.target || processedNodes[1]?.id,
-                name: conn.name || `${index}`,
+                source: conn.source,
+                target: conn.target,
+                name: conn.name,
                 lineStyle: {
-                    color: '#95A5A6',
-                    width: 3,
-                    opacity: 0.8
+                    color: lineColor,
+                    width: lineWidth,
+                    type: 'solid',
+                    opacity: problemInfo ? 1 : 0.8,
+                    shadowColor: problemInfo ? 'rgba(255, 77, 79, 0.6)' : 'transparent',
+                    shadowBlur: problemInfo ? 6 : 0
                 },
                 label: {
-                    show: true,
-                    position: 'middle',
-                    fontSize: 10,
-                    color: '#666'
-                }
+                    show: false  // 不显示标签
+                },
+                emphasis: {
+                    lineStyle: {
+                        color: problemInfo ? lineColor : '#666',
+                        width: problemInfo ? 9 : 5,
+                        shadowBlur: 10,
+                        shadowColor: problemInfo ? 'rgba(255, 77, 79, 0.8)' : 'rgba(149, 165, 166, 0.8)'
+                    }
+                },
+                // 保存问题信息供 tooltip 使用
+                problemInfo: problemInfo
             };
         });
 
@@ -1264,6 +1778,7 @@ const topologyOptions = computed(() => {
         console.log('处理后的连接总数:', processedLinks.length);
         console.log('所有节点ID:', processedNodes.map(n => n.id));
         console.log('所有连接源目标:', processedLinks.map(l => `${l.source} -> ${l.target}`));
+        console.log('处理后的连接详情:', processedLinks);
 
         const config = {
             title: {
@@ -1284,7 +1799,58 @@ const topologyOptions = computed(() => {
                         if (params.dataType === 'node') {
                             return `<strong>${params.data.name}</strong>`;
                         } else if (params.dataType === 'edge') {
-                            return `${params.data.source} ↔ ${params.data.target}`;
+                            let tooltipContent = `<div style="font-weight: bold;">${formatLinkName(params.data.name, selectedSlice.value)}</div>`;
+                            
+                            // 使用与地理视图完全相同的逻辑：通过问题数据查找匹配的问题
+                            const issue = currentIssuesData.value.find(item => {
+                                if (!item.location || !params.data.name) return false;
+                                const problemLocation = String(item.location);
+                                const connectionName = params.data.name;
+                                // 精确匹配位置信息
+                                return connectionName.includes(problemLocation) || problemLocation.includes(connectionName) ||
+                                       (connectionName.split('-').length >= 2 && problemLocation.split('-').length >= 2 &&
+                                        connectionName.split('-')[0] === problemLocation.split('-')[0] &&
+                                        connectionName.split('-')[1] === problemLocation.split('-')[1]);
+                            });
+                            
+                            if (issue && (issue.status === '待处理' || issue.status === '处理中')) {
+                                tooltipContent += `<div style="margin-top: 8px; padding: 8px; background: #fff2f0; border-left: 3px solid #ff4d4f;">`;
+                                tooltipContent += `<div style="color: #ff4d4f; font-weight: bold;">⚠️ 警告信息</div>`;
+                                tooltipContent += `<div><strong>问题ID:</strong> ${issue.id}</div>`;
+                                tooltipContent += `<div><strong>类型:</strong> ${issue.type}</div>`;
+                                tooltipContent += `<div><strong>状态:</strong> ${issue.status}</div>`;
+                                tooltipContent += `<div><strong>描述:</strong> ${issue.description}</div>`;
+                                tooltipContent += `<div><strong>严重性:</strong> ${issue.severity}</div>`;
+                                tooltipContent += `</div>`;
+                            }
+                            
+                            return tooltipContent;
+                        } else if (params.seriesType === 'scatter' && params.data.name && params.data.name.includes('警告')) {
+                            // 处理警告标记的tooltip
+                            const linkName = params.data.name.replace('-警告', '');
+                            let tooltipContent = `<div style="font-weight: bold;">${formatLinkName(linkName, selectedSlice.value)}</div>`;
+                            
+                            const issue = currentIssuesData.value.find(item => {
+                                if (!item.location) return false;
+                                const problemLocation = String(item.location);
+                                // 精确匹配位置信息
+                                return linkName.includes(problemLocation) || problemLocation.includes(linkName) ||
+                                       linkName.replace('↔', '-') === problemLocation ||
+                                       problemLocation.replace('-', '↔') === linkName;
+                            });
+                            
+                            if (issue && (issue.status === '待处理' || issue.status === '处理中')) {
+                                tooltipContent += `<div style="margin-top: 8px; padding: 8px; background: #fff2f0; border-left: 3px solid #ff4d4f;">`;
+                                tooltipContent += `<div style="color: #ff4d4f; font-weight: bold;">⚠️ 警告信息</div>`;
+                                tooltipContent += `<div><strong>问题ID:</strong> ${issue.id}</div>`;
+                                tooltipContent += `<div><strong>类型:</strong> ${issue.type}</div>`;
+                                tooltipContent += `<div><strong>状态:</strong> ${issue.status}</div>`;
+                                tooltipContent += `<div><strong>描述:</strong> ${issue.description}</div>`;
+                                tooltipContent += `<div><strong>严重性:</strong> ${issue.severity}</div>`;
+                                tooltipContent += `</div>`;
+                            }
+                            
+                            return tooltipContent;
                         }
                     } catch (e) {
                         console.error('Tooltip格式化错误:', e);
@@ -1315,20 +1881,18 @@ const topologyOptions = computed(() => {
                     shadowBlur: 6,
                     shadowColor: 'rgba(0, 0, 0, 0.2)'
                 },
-                lineStyle: {
-                    opacity: 0.8,
-                    curveness: 0.1
-                },
+                // 移除全局 lineStyle，让每个连接使用自己的样式
+                // lineStyle: {
+                //     opacity: 0.8,
+                //     curveness: 0.1
+                // },
                 emphasis: {
-                    focus: 'adjacency',
-                    lineStyle: {
-                        width: 4,
-                        opacity: 1
-                    },
-                    itemStyle: {
-                        shadowBlur: 15,
-                        shadowColor: 'rgba(0, 0, 0, 0.4)'
-                    }
+                    focus: 'adjacency'
+                    // 移除全局 emphasis lineStyle，让每个连接使用自己的 emphasis 样式
+                    // lineStyle: {
+                    //     width: 4,
+                    //     opacity: 1
+                    // }
                 },
                 force: {
                     repulsion: 2000,      // 增加节点间斥力，避免重叠
@@ -1336,7 +1900,9 @@ const topologyOptions = computed(() => {
                     edgeLength: [80, 200], // 增加边长范围，让连接更明显
                     layoutAnimation: true,
                     friction: 0.6         // 增加摩擦力，稳定布局
-                }
+                },
+                animationDuration: 1000,
+                animationEasing: 'cubicOut'
             }]
         };
 
@@ -1370,63 +1936,28 @@ const linkAvailability = ref({
 
 // 全网可用性数据 - 根据当前问题动态计算
 const networkAvailability = computed(() => {
-    const activeSlices = sliceStats.value.active; // 总计 = 活跃切片数
+    // 计算不同状态的问题数量
+    const pendingInterruption = currentIssuesData.value.filter(issue => 
+        issue.type === '中断' && issue.status === '待处理'
+    ).length;
     
-    // 统计不同状态的切片
-    let unavailable = 0; // 不可用 (高严重程度的未处理问题)
-    let exception = 0;   // 异常 (中低严重程度的未处理问题)
-    let unknown = 0;     // 未知 (处理中的问题)
+    const pendingDelayDrop = currentIssuesData.value.filter(issue => 
+        issue.type === '延迟下降' && issue.status === '待处理'  
+    ).length;
     
-    // 记录每个切片的状态，避免重复计算
-    const sliceStatus = new Map();
+    const processing = currentIssuesData.value.filter(issue => 
+        issue.status === '处理中'
+    ).length;
     
-    currentIssuesData.value.forEach(issue => {
-        const sliceName = issue.slice;
-        const severity = issue.severity;
-        const status = issue.status;
-        
-        // 如果切片既有未处理又有处理中，优先算未处理
-        if (status === "待处理" || status === "未处理") {
-            if (severity === "高") {
-                sliceStatus.set(sliceName, 'unavailable');
-            } else if (severity === "中" || severity === "低") {
-                // 只有在没有高优先级问题时才设置为异常
-                if (!sliceStatus.has(sliceName) || sliceStatus.get(sliceName) !== 'unavailable') {
-                    sliceStatus.set(sliceName, 'exception');
-                }
-            }
-        } else if (status === "处理中") {
-            // 只有在没有未处理问题时才设置为处理中
-            if (!sliceStatus.has(sliceName)) {
-                sliceStatus.set(sliceName, 'unknown');
-            }
-        }
-    });
-    
-    // 统计各种状态的数量
-    sliceStatus.forEach(status => {
-        switch (status) {
-            case 'unavailable':
-                unavailable++;
-                break;
-            case 'exception':
-                exception++;
-                break;
-            case 'unknown':
-                unknown++;
-                break;
-        }
-    });
-    
-    // 可用切片 = 总切片数 - 有问题的切片数
-    const available = activeSlices - unavailable - exception - unknown;
+    const totalActive = sliceStats.value.active;
+    const available = Math.max(0, totalActive - pendingInterruption - pendingDelayDrop - processing);
     
     return {
-        available: Math.max(0, available),
-        unavailable,
-        unknown,
-        exception,
-        total: activeSlices
+        available: available,           // 可用
+        exception: pendingDelayDrop,    // 异常（待处理的延迟下降）
+        unavailable: pendingInterruption, // 不可用（待处理的中断）
+        unknown: processing,            // 未知（处理中）
+        total: totalActive              // 合计
     };
 });
 
@@ -1598,46 +2129,12 @@ const timelineOptions = computed(() => {
     return {
         title: {
             text: (() => {
-                let title = '24小时链路时延趋势';
+                let title = '';
                 if (selectedSlice.value && selectedSlice.value !== 'all') {
-                    title += ` - ${selectedSlice.value}切片`;
+                    title += `${selectedSliceInfo.value?.name || ''}切片`;
                 }
                 if (selectedRoute.value && selectedRoute.value !== 'all') {
-                    // 直接在这里处理链路名称转换
-                    let linkDisplayName = selectedRoute.value;
-                    
-                    // 解析链路ID (格式: "BJ001-SH002" 或 "0-1")
-                    const parts = selectedRoute.value.split('-');
-                    if (parts.length === 2) {
-                        const [sourceId, targetId] = parts;
-                        
-                        // 获取当前切片的拓扑数据
-                        const currentTopology = networkTopology.value;
-                        if (currentTopology && currentTopology.cities) {
-                            // 查找对应的城市名称 - 支持字符串ID和数字ID
-                            let sourceCity, targetCity;
-                            
-                            // 尝试按字符串ID查找
-                            sourceCity = currentTopology.cities.find(city => city.id === sourceId);
-                            targetCity = currentTopology.cities.find(city => city.id === targetId);
-                            
-                            // 如果没找到，尝试按数字ID查找
-                            if (!sourceCity || !targetCity) {
-                                const sourceNumId = parseInt(sourceId);
-                                const targetNumId = parseInt(targetId);
-                                if (!isNaN(sourceNumId) && !isNaN(targetNumId)) {
-                                    sourceCity = currentTopology.cities.find(city => city.id === sourceNumId);
-                                    targetCity = currentTopology.cities.find(city => city.id === targetNumId);
-                                }
-                            }
-                            
-                            if (sourceCity && targetCity) {
-                                linkDisplayName = `${sourceCity.name} ↔ ${targetCity.name}`;
-                            }
-                        }
-                    }
-                    
-                    title += ` - ${linkDisplayName}`;
+                    title += ` - ${formatLinkName(selectedRoute.value, selectedSlice.value)}`;
                 }
                 return title;
             })(),
@@ -1653,49 +2150,12 @@ const timelineOptions = computed(() => {
             trigger: 'axis',
             formatter: function(params) {
                 let tooltipContent = `时间: ${params[0].axisValue}<br/>平均时延: ${params[0].value}ms`;
-                
-                // 添加当前选择信息
                 if (selectedSlice.value && selectedSlice.value !== 'all') {
                     tooltipContent += `<br/>切片: ${selectedSlice.value}`;
                 }
                 if (selectedRoute.value && selectedRoute.value !== 'all') {
-                    // 直接在这里处理链路名称转换
-                    let linkDisplayName = selectedRoute.value;
-                    
-                    // 解析链路ID (格式: "BJ001-SH002" 或 "0-1")
-                    const parts = selectedRoute.value.split('-');
-                    if (parts.length === 2) {
-                        const [sourceId, targetId] = parts;
-                        
-                        // 获取当前切片的拓扑数据
-                        const currentTopology = networkTopology.value;
-                        if (currentTopology && currentTopology.cities) {
-                            // 查找对应的城市名称 - 支持字符串ID和数字ID
-                            let sourceCity, targetCity;
-                            
-                            // 尝试按字符串ID查找
-                            sourceCity = currentTopology.cities.find(city => city.id === sourceId);
-                            targetCity = currentTopology.cities.find(city => city.id === targetId);
-                            
-                            // 如果没找到，尝试按数字ID查找
-                            if (!sourceCity || !targetCity) {
-                                const sourceNumId = parseInt(sourceId);
-                                const targetNumId = parseInt(targetId);
-                                if (!isNaN(sourceNumId) && !isNaN(targetNumId)) {
-                                    sourceCity = currentTopology.cities.find(city => city.id === sourceNumId);
-                                    targetCity = currentTopology.cities.find(city => city.id === targetNumId);
-                                }
-                            }
-                            
-                            if (sourceCity && targetCity) {
-                                linkDisplayName = `${sourceCity.name} ↔ ${targetCity.name}`;
-                            }
-                        }
-                    }
-                    
-                    tooltipContent += `<br/>链路: ${linkDisplayName}`;
+                    tooltipContent += `<br/>链路: ${formatLinkName(selectedRoute.value, selectedSlice.value)}`;
                 }
-                
                 return tooltipContent;
             }
         },
@@ -1773,40 +2233,21 @@ const timelineOptions = computed(() => {
     };
 });
 
-// 地图和拓扑图点击事件处理
-const handleMapClick = (params: any) => {
-    console.log('图表点击事件:', params);
-    
-    // 处理地理视图的连接线点击事件
-    if (params.seriesType === 'lines' && params.data && params.data.name) {
-        selectedRoute.value = params.data.name;
-        console.log(`地理视图选中链路: ${selectedRoute.value}`);
-    }
-    
-    // 处理拓扑视图的边点击事件
-    else if (params.seriesType === 'graph' && params.dataType === 'edge' && params.data) {
-        // 拓扑图的边点击
-        if (params.data.name) {
-            selectedRoute.value = params.data.name;
-            console.log(`拓扑视图选中链路: ${selectedRoute.value}`);
-        } else if (params.data.source && params.data.target) {
-            // 如果没有name字段，从source和target构建链路名称
-            selectedRoute.value = `${params.data.source}-${params.data.target}`;
-            console.log(`拓扑视图构建链路名称: ${selectedRoute.value}`);
-        }
-    }
-    
-    // 处理拓扑视图的节点点击事件（可选功能）
-    else if (params.seriesType === 'graph' && params.dataType === 'node' && params.data) {
-        console.log(`拓扑视图点击节点: ${params.data.name}`);
-        // 可以在这里添加节点点击的处理逻辑
-    }
-};
 
 // 当前问题数据 - 从加载的警报数据获取
+import alertMock from '../../public/mock/alert.json';
 const currentIssuesData = computed(() => {
-    return alertData.value?.currentIssues || [];
+    // 显示所有问题，包括已解决的
+    return alertMock.currentIssues;
 });
+
+// 检查切片是否有待处理或处理中的问题
+const hasSliceIssues = (sliceName: string) => {
+    return currentIssuesData.value.some(issue => 
+        issue.slice === sliceName && 
+        (issue.status === '待处理' || issue.status === '处理中')
+    );
+};
 
 // 选择的切片组
 const selectedSliceGroup = ref(1);
@@ -1871,32 +2312,16 @@ const handleSliceGroupChange = (value: number) => {
 
 // 问题类型颜色映射
 const getIssueTypeColor = (type: string) => {
-    if (alertData.value?.alertTypes?.[type]) {
-        return alertData.value.alertTypes[type].color;
-    }
     // 默认映射
     const colorMap: { [key: string]: string } = {
         '延迟下降': 'warning',
-        '中断': 'danger',
-        '连接异常': 'danger',
-        '性能下降': 'warning',
-        '带宽不足': 'warning',
-        '设备故障': 'danger',
-        '安全告警': 'info',
-        '配置错误': 'warning',
-        '网络拥塞': 'warning',
-        '硬件故障': 'danger',
-        '软件异常': 'warning',
-        '温度告警': 'info'
+        '中断': 'danger'
     };
     return colorMap[type] || '';
 };
 
 // 严重程度颜色映射
 const getSeverityColor = (severity: string) => {
-    if (alertData.value?.severityMapping?.[severity]) {
-        return alertData.value.severityMapping[severity];
-    }
     // 默认映射
     const colorMap: { [key: string]: string } = {
         '高': 'danger',
@@ -1906,11 +2331,24 @@ const getSeverityColor = (severity: string) => {
     return colorMap[severity] || '';
 };
 
+// 时间格式化函数 - 转换为简写格式 (YY/MM/DD HH:mm)
+const formatShortTime = (dateTime: string) => {
+    if (!dateTime) return '';
+    try {
+        const date = new Date(dateTime);
+        const year = date.getFullYear().toString().slice(-2); // 取年份后两位
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const hour = date.getHours().toString().padStart(2, '0');
+        const minute = date.getMinutes().toString().padStart(2, '0');
+        return `${year}/${month}/${day} ${hour}:${minute}`;
+    } catch (error) {
+        return dateTime; // 如果解析失败，返回原始值
+    }
+};
+
 // 状态颜色映射
 const getStatusColor = (status: string) => {
-    if (alertData.value?.statusMapping?.[status]) {
-        return alertData.value.statusMapping[status];
-    }
     // 默认映射
     const colorMap: { [key: string]: string } = {
         '处理中': 'warning',
@@ -1922,25 +2360,6 @@ const getStatusColor = (status: string) => {
     return colorMap[status] || '';
 };
 
-// 切片类型颜色映射
-const getSliceTypeColor = (type: string) => {
-    const colorMap: { [key: string]: string } = {
-        'Physical': 'info',
-        'eMBB': 'success',
-        'URLLC': 'warning',
-        'mMTC': 'info'
-    };
-    return colorMap[type] || '';
-};
-
-// 根据切片名称获取切片类型
-const getSliceTypeByName = (sliceName: string) => {
-    if (sliceName.includes('物理网')) return 'Physical';
-    if (sliceName.includes('eMBB')) return 'eMBB';
-    if (sliceName.includes('URLLC')) return 'URLLC';
-    if (sliceName.includes('mMTC') || sliceName.includes('IoT')) return 'mMTC';
-    return 'Physical'; // 默认类型
-};
 
 // 切片状态颜色映射
 const getSliceStatusColor = (status: string) => {
@@ -1952,32 +2371,17 @@ const getSliceStatusColor = (status: string) => {
     return colorMap[status] || '';
 };
 
-// 使用率颜色映射
-const getUsageColor = (usage: number) => {
-    if (usage >= 90) return '#ff4d4f';
-    if (usage >= 70) return '#faad14';
-    return '#52c41a';
-};
-
-// 组件挂载时加载网络拓扑数据和警报数据
-// 监听切片和链路选择变化，重新加载数据
-watch([selectedSlice, selectedRoute], ([newSlice, newRoute]) => {
-    console.log('切片或链路选择变化:', { slice: newSlice, route: newRoute });
-    // 不需要重新调用 loadDelayData，因为 timelineOptions 会自动根据选择过滤数据
-}, { immediate: false });
-
+// 组件挂载时加载网络拓扑数据
 onMounted(async () => {
     await loadNetworkTopology();
-    loadAlertData();
     loadDelayData(); // 加载实时时延数据
     // 初始化默认切片（物理网络）的拓扑和探测数据
     switchSliceTopology('physical-network');
-    
+});
     // 确保初始选择第一组的第一个切片
     if (displayedSlices.value.length > 0) {
         selectSlice(displayedSlices.value[0].id);
     }
-});
 </script>
 
 <style>
@@ -2001,6 +2405,23 @@ html, body {
 }
 </style>
 <style scoped>
+/* 链路时延浮窗样式优化 */
+.delay-popup {
+    position: absolute;
+    min-width: 380px;
+    min-height: 260px;
+    background: #fff;
+    border: 3px solid #409eff;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.32);
+    border-radius: 14px;
+    padding: 22px 28px 18px 28px;
+    color: #222;
+    font-size: 17px;
+    z-index: 10000; /* 进一步提高 z-index，确保在所有元素之上 */
+    pointer-events: auto;
+    opacity: 1;
+    transition: all 0.18s cubic-bezier(.4,0,.2,1);
+}
 /* 通用间距类 */
 .mgb20 {
     margin-bottom: 20px !important;
@@ -2033,9 +2454,15 @@ html, body {
 /* 确保页面底部有足够间距 */
 .dashboard-container {
     padding-bottom: 0; /* 移除页面底部间距 */
-    min-height: 100vh; /* 确保容器至少填满整个视口高度 */
+    min-height: calc(100vh - 80px); /* 考虑头部导航高度，剩余空间用于内容 */
     display: flex;
     flex-direction: column;
+    gap: 20px; /* 为各行添加间距 */
+}
+
+/* 确保表格行能充满剩余空间 */
+.dashboard-container .table-row {
+    flex: 1; /* 让表格行占用剩余的可用空间 */
 }
 
 .card-content {
@@ -2148,139 +2575,171 @@ html, body {
     flex-direction: column;
     width: 24%; /* 增加左侧宽度到24% */
     max-width: 24%; /* 防止宽度超出 */
+    align-self: stretch; /* 确保垂直拉伸 */
 }
 
 .right-component {
     flex: 0 0 76%; /* 增加右侧宽度到76% */
     display: flex;
-    flex-direction: row; /* 地图和按钮水平排列 */
+    flex-direction: column; /* 改为垂直布局，给地图容器更多空间 */
     width: 76%; /* 增加右侧宽度到76% */
     max-width: 76%; /* 防止宽度超出 */
     height: 100%;
-    gap: 2px; /* 减少地图和按钮间的间距 */
+    align-self: stretch; /* 确保垂直拉伸 */
 }
 
-/* 地图图表占据主要空间 */
-.map-chart {
+/* 表格卡片容器 - 确保充满剩余高度 */
+.right-component .el-col:last-child {
     flex: 1;
     height: 100%;
-}
-
-/* 地图/拓扑切换按钮样式 - 紧贴右边框 */
-.view-mode-switcher {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 20px 0px 20px 5px; /* 右边距改为0，完全贴边 */
-    background: transparent;
-    border: none;
-    width: auto;
-    min-width: 0;
-    flex-shrink: 0;
 }
 
-.switcher-buttons {
+/* 地图容器占据全部空间 */
+.map-container {
+    flex: 1;
+    position: relative;
+    height: 100%;
+    width: 100%;
+    overflow: visible; /* 确保浮动按钮不被裁剪 */
+}
+
+/* 地图图表占据全部空间 */
+.map-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 浮动切换按钮样式 */
+.floating-view-switcher {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 100;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 4px 16px 0 rgba(60, 120, 200, 0.15);
+    border: 1px solid rgba(224, 234, 255, 0.8);
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+}
+
+.floating-view-switcher:hover {
+    box-shadow: 0 6px 24px 0 rgba(60, 120, 200, 0.25);
+    transform: translateY(-2px);
+}
+
+.floating-buttons {
     display: flex;
-    flex-direction: row;
-    gap: 8px;
-    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
 }
 
-.view-mode-switcher .switcher-btn {
-    font-size: 12px;
-    padding: 6px 12px;
-    width: auto;
-    height: 32px;
-    border-radius: 4px;
-    border: none;
-    background: rgba(255, 255, 255, 0.9);
-    color: #606266;
-    transition: all 0.3s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    writing-mode: horizontal-tb;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
+.floating-btn {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+    height: 28px !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 1px 4px 0 rgba(60, 120, 200, 0.1) !important;
+    border: 1px solid #e0eaff !important;
 }
 
-.view-mode-switcher .switcher-btn:hover {
-    color: #409eff;
-    background: rgba(64, 158, 255, 0.1);
-    box-shadow: 0 2px 6px rgba(64, 158, 255, 0.2);
+.floating-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 8px 0 rgba(60, 120, 200, 0.2) !important;
 }
 
-.view-mode-switcher .switcher-btn.is-active,
-.view-mode-switcher .el-button--primary {
-    background: #409eff;
-    color: #ffffff;
-    box-shadow: 0 2px 6px rgba(64, 158, 255, 0.4);
-}
-
-.switcher-description {
-    margin-top: 5px;
-    padding: 0 4px;
-}
-
-.description-text {
-    font-size: 11px;
-    color: #999999;
-    line-height: 1.2;
-    display: block;
-    text-align: left;
-    max-width: 120px;
+.floating-description {
+    text-align: center;
+    font-size: 10px;
+    color: #6b7a99;
+    font-weight: 400;
+    margin: 0;
 }
 
 /* 3D切片可视化样式 */
 .slice-visualizer {
     width: 100%;
     height: 100%;
-    border: 2px solid #e8e8e8;
-    border-radius: 8px;
-    background: linear-gradient(135deg, #f0f2f5 0%, #fafafa 100%);
+    border: none;
+    border-radius: 20px;
+    background: linear-gradient(135deg, 
+        rgba(240, 248, 255, 0.8) 0%, 
+        rgba(230, 245, 255, 0.6) 50%, 
+        rgba(245, 250, 255, 0.8) 100%);
     display: flex;
     flex-direction: column;
-    min-height: 400px; /* 大幅增加切片可视化高度 */
-    max-height: 450px; /* 增加最大高度 */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    padding: 12px; /* 进一步减少内边距 */
+    flex: 1;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.08),
+        0 8px 32px rgba(0, 0, 0, 0.04);
+    padding: 16px;
     overflow: hidden;
     position: relative;
+    backdrop-filter: blur(20px);
+}
+
+.slice-visualizer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 20%, rgba(24, 144, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(24, 144, 255, 0.06) 0%, transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(24, 144, 255, 0.04) 0%, transparent 50%);
+    pointer-events: none;
+    border-radius: inherit;
 }
 
 .slice-header {
-    text-align: center;
-    margin-bottom: 15px; /* 减少底部间距 */
+    text-align: left;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 10;
+    padding: 0 4px;
 }
 
 .slice-header h3 {
-    margin: 0 0 5px 0; /* 减少间距 */
-    font-size: 16px; /* 稍微减小字体 */
-    color: #333;
-    font-weight: 600;
+    margin: 0 0 4px 0;
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .slice-header p {
     margin: 0;
-    font-size: 12px; /* 减小描述文字 */
-    color: #666;
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
 }
 
 .slice-stack-container {
     flex: 1;
     display: flex;
-    align-items: flex-start; /* 从center改为flex-start，让内容靠上对齐 */
-    justify-content: flex-start;
-    perspective: 1500px;
-    perspective-origin: center center;
+    align-items: center;
+    justify-content: center;
+    perspective: 2000px;
+    perspective-origin: 50% 40%;
     position: relative;
     width: 100%;
     height: 100%;
     overflow: hidden;
-    padding-left: 20px; /* 减少左侧内边距 */
-    padding-top: 100px; /* 进一步增加顶部内边距，让可视化区域更往下移 */
+    padding: 20px 20px;
+    background: linear-gradient(135deg, 
+        rgba(24, 144, 255, 0.02) 0%, 
+        rgba(24, 144, 255, 0.05) 50%, 
+        rgba(24, 144, 255, 0.02) 100%);
+    border-radius: 16px;
 }
 
 .zoom-controls {
@@ -2288,128 +2747,342 @@ html, body {
     top: 20px;
     right: 20px;
     display: flex;
-    gap: 5px;
+    gap: 8px;
     z-index: 100;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 5px;
-    border-radius: 6px;
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 12px;
+    border-radius: 12px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .zoom-btn {
-    width: 30px;
-    height: 30px;
-    border: 1px solid #ddd;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 4px;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(24, 144, 255, 0.2);
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.95) 0%, 
+        rgba(255, 255, 255, 0.8) 100%);
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
-    font-weight: bold;
-    color: #666;
-    transition: all 0.2s ease;
-    backdrop-filter: blur(5px);
+    font-size: 16px;
+    font-weight: 600;
+    color: #1890ff;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
 }
 
 .zoom-btn:hover {
-    background: rgba(24, 144, 255, 0.1);
+    background: linear-gradient(135deg, 
+        rgba(24, 144, 255, 0.1) 0%, 
+        rgba(24, 144, 255, 0.05) 100%);
     border-color: #1890ff;
     color: #1890ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(24, 144, 255, 0.2);
+}
+
+.zoom-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
 }
 
 .slice-stack {
     position: relative;
-    width: 70%; /* 从50%增加到70% */
-    height: 90%; /* 从85%增加到90% */
+    width: 80%;
+    height: 75%;
     transform-style: preserve-3d;
-    transform: rotateX(15deg) rotateY(-10deg);
-    transition: transform 0.3s ease;
+    transform: rotateX(20deg) rotateY(-15deg);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.15));
+}
+
+.slice-stack:hover {
+    transform: rotateX(25deg) rotateY(-20deg) scale(1.02);
 }
 
 .slice-layer {
     position: absolute;
     width: 100%;
-    height: 120px; /* 从100px增加到120px */
-    border: 3px solid #1890ff;
-    border-radius: 12px;
-    background: rgba(24, 144, 255, 0.1);
+    height: 30px;
+    border: 2px solid transparent;
+    border-radius: 16px;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.95) 0%, 
+        rgba(255, 255, 255, 0.85) 100%);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(5px);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.12),
+        0 4px 16px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+    opacity: 1;
+}
+
+.slice-layer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, 
+        rgba(24, 144, 255, 0.1) 0%, 
+        rgba(24, 144, 255, 0.05) 50%,
+        rgba(24, 144, 255, 0.1) 100%);
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.slice-layer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.4) 50%, 
+        transparent 100%);
+    transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+/* 切片层基础样式 - 始终可见，无进入动画 */
+.slice-layer {
+    opacity: 1;
+}
+
+/* 移除所有进入动画延迟 */
+
+/* 移除之前的悬浮动画，使用更稳定的微动画 */
+.slice-layer:not(:hover):not(.active) {
+    animation: gentleFloat 6s ease-in-out infinite;
+}
+
+.slice-layer:nth-child(1):not(:hover):not(.active) { 
+    animation-delay: 0s; 
+}
+.slice-layer:nth-child(2):not(:hover):not(.active) { 
+    animation-delay: 1s; 
+}
+.slice-layer:nth-child(3):not(:hover):not(.active) { 
+    animation-delay: 2s; 
+}
+.slice-layer:nth-child(4):not(:hover):not(.active) { 
+    animation-delay: 3s; 
+}
+.slice-layer:nth-child(5):not(:hover):not(.active) { 
+    animation-delay: 4s; 
+}
+.slice-layer:nth-child(6):not(:hover):not(.active) { 
+    animation-delay: 5s; 
 }
 
 .slice-layer:hover {
     transform: translateZ(15px) translateY(-8px) scale(1.05);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
-    border-width: 4px;
+    box-shadow: 
+        0 15px 45px rgba(0, 0, 0, 0.2),
+        0 6px 24px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(24, 144, 255, 0.6);
+}
+
+.slice-layer:hover::before {
+    opacity: 1;
+}
+
+.slice-layer:hover::after {
+    left: 100%;
 }
 
 .slice-layer.active {
-    border-color: #ff4d4f;
-    background: rgba(255, 77, 79, 0.15);
-    box-shadow: 0 8px 16px rgba(255, 77, 79, 0.3);
-    transform: translateZ(20px) translateY(-12px) scale(1.08);
+    border: 3px solid #000000;
+    background: linear-gradient(135deg, 
+        rgba(0, 0, 0, 0.95) 0%, 
+        rgba(30, 30, 30, 0.9) 50%,
+        rgba(0, 0, 0, 0.95) 100%);
+    box-shadow: 
+        0 12px 36px rgba(0, 0, 0, 0.4),
+        0 6px 18px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transform: translateZ(20px) translateY(-10px) scale(1.08);
+}
+
+.slice-layer.active::before {
+    background: linear-gradient(135deg, 
+        rgba(0, 0, 0, 0.3) 0%, 
+        rgba(0, 0, 0, 0.1) 50%,
+        rgba(0, 0, 0, 0.3) 100%);
+    opacity: 1;
+}
+
+.slice-layer.switching {
+    animation: switchingPulse 0.3s ease-in-out;
+}
+
+.slice-layer.active::after {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.6) 50%, 
+        transparent 100%);
 }
 
 .slice-content {
     text-align: center;
-    color: #333;
+    color: #2c3e50;
     position: relative;
-    z-index: 2;
+    z-index: 10;
     width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
 }
 
 .slice-name {
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
-    padding: 0 20px;
+    width: 100%;
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    position: relative;
+}
+
+.slice-name::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #3498db, #2c3e50);
+    border-radius: 1px;
+    transition: width 0.3s ease;
+}
+
+.slice-layer:hover .slice-name::after,
+.slice-layer.active .slice-name::after {
+    width: 60%;
+}
+
+.slice-layer.active .slice-name {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.slice-layer.active .slice-name::after {
+    background: linear-gradient(90deg, #ffffff, #f0f0f0);
+}
+
+/* 警告图标样式 */
+.slice-warning-icon {
+    position: absolute;
+    right: 8px;
+    top: 1px;
+    font-size: 16px;
+    color: #ff4d4f;
+    animation: pulse 2s infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    filter: drop-shadow(0 0 4px rgba(255, 77, 79, 0.5));
+    z-index: 20;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
 }
 
 .slice-tooltip {
     position: absolute;
     top: 50%;
-    left: calc(100% + 15px);
+    left: calc(100% + 20px);
     transform: translateY(-50%);
-    background: rgba(0, 0, 0, 0.9);
+    background: linear-gradient(135deg, 
+        rgba(0, 0, 0, 0.95) 0%, 
+        rgba(30, 30, 30, 0.95) 100%);
     color: white;
-    padding: 10px 15px;
-    border-radius: 8px;
+    padding: 16px 20px;
+    border-radius: 12px;
     font-size: 15px;
     z-index: 1000;
     white-space: nowrap;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-    animation: fadeInRight 0.3s ease;
+    box-shadow: 
+        0 16px 48px rgba(0, 0, 0, 0.3),
+        0 8px 24px rgba(0, 0, 0, 0.2);
+    animation: fadeInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.slice-tooltip::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, 
+        rgba(24, 144, 255, 0.1) 0%, 
+        rgba(24, 144, 255, 0.05) 100%);
+    border-radius: inherit;
+    pointer-events: none;
 }
 
 .slice-tooltip::after {
     content: '';
     position: absolute;
     top: 50%;
-    left: -6px;
+    left: -8px;
     transform: translateY(-50%);
-    border: 6px solid transparent;
-    border-right-color: rgba(0, 0, 0, 0.9);
+    border: 8px solid transparent;
+    border-right-color: rgba(0, 0, 0, 0.95);
+    filter: drop-shadow(-2px 0 4px rgba(0, 0, 0, 0.2));
 }
 
 .tooltip-title {
     font-weight: 600;
     margin: 0;
     color: #fff;
-    font-size: 15px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    font-size: 16px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    position: relative;
+    z-index: 1;
 }
 
 .tooltip-info {
@@ -2421,19 +3094,41 @@ html, body {
 }
 
 .selected-slice-info {
-    margin-top: 8px; /* 进一步减少顶部间距，拉近与可视化区域的距离 */
-    padding: 10px; /* 减少内边距 */
-    background: rgba(255, 255, 255, 0.95); /* 稍微增加透明度 */
-    border-radius: 6px; /* 稍微减小圆角 */
-    border: 1px solid #e8e8e8;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* 减小阴影 */
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.95) 0%, 
+        rgba(248, 250, 252, 0.95) 100%);
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 
+        0 6px 24px rgba(0, 0, 0, 0.08),
+        0 3px 12px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(20px);
 }
 
 .selected-slice-info h4 {
-    margin: 0 0 8px 0; /* 减少底部间距 */
-    font-size: 14px; /* 减小字体 */
-    color: #333;
+    margin: 0;
+    font-size: 14px;
     font-weight: 600;
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    position: relative;
+}
+
+.selected-slice-info h4::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 2px;
+    background: linear-gradient(90deg, #3498db, #2c3e50);
+    border-radius: 1px;
 }
 
 .slice-details {
@@ -2488,6 +3183,57 @@ html, body {
     to {
         opacity: 1;
         transform: translateY(-50%) translateX(0) scale(1);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+@keyframes slideInStack {
+    from {
+        transform: translateZ(-30px) translateY(20px) scale(0.9);
+    }
+    to {
+        transform: translateZ(0) translateY(0) scale(1);
+    }
+}
+
+@keyframes floatAnimation {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes gentleFloat {
+    0%, 100% {
+        filter: brightness(1) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.1));
+    }
+    50% {
+        filter: brightness(1.02) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.15));
+    }
+}
+
+@keyframes switchingPulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.02);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
     }
 }
 
@@ -2840,8 +3586,7 @@ html, body {
     align-items: stretch;
     gap: 5px;
     flex-wrap: nowrap;
-    min-height: 480px;
-    height: 480px;
+    /* 移除固定高度，让行自适应内容 */
 }
 
 .table-row .el-col {
@@ -2883,26 +3628,30 @@ html, body {
     flex-direction: column;
 }
 
-/* 表格卡片 - 确保等高并添加滚动 */
+/* 表格卡片 - 确保与左侧卡片等高 */
 .table-card {
-    height: 100% !important;
+    height: 100% !important; /* 与左侧chart-card保持一致 */
     display: flex;
     flex-direction: column;
+    z-index: 1; /* 确保z-index低于浮动窗口 */
 }
 
 .table-card .el-card__body {
     display: flex;
     flex-direction: column;
-    height: 100% !important;
+    height: 100% !important; /* 充满卡片高度 */
     flex: 1;
-    padding: 15px 15px 10px 15px; /* 恢复合适的内边距 */
-    overflow: hidden;
+    padding: 20px; /* 与左侧卡片保持一致的内边距 */
+    overflow: hidden; /* 卡片体不滚动，由内部表格滚动 */
 }
 
 /* 图表行样式 - 确保切片延迟和链路时延卡片等高 */
 .chart-row {
     display: flex;
     align-items: stretch; /* 确保子元素等高 */
+    flex: 0 0 auto; /* 固定尺寸，不参与剩余空间分配 */
+    position: relative; /* 为延迟弹窗提供定位上下文 */
+    overflow: visible; /* 确保弹窗不被裁剪 */
 }
 
 .chart-row .el-col {
@@ -2912,7 +3661,6 @@ html, body {
 
 .chart-card {
     height: 100% !important;
-    min-height: 600px; /* 增加最外层卡片容器的最小高度 */
     display: flex;
     flex-direction: column;
 }
@@ -2923,8 +3671,7 @@ html, body {
     display: flex !important;
     flex-direction: column !important;
     padding: 20px;
-    min-height: 550px; /* 从500px增加到550px，让卡片更高 */
-    overflow: auto; /* 改为auto以允许滚动查看隐藏内容 */
+    overflow: auto; /* 允许滚动查看隐藏内容 */
 }
 
 /* 地图和切片可视化卡片特殊样式 */
@@ -2947,43 +3694,33 @@ html, body {
 
 .table-container {
     flex: 1;
-    overflow: hidden;
+    overflow: hidden; /* 容器本身不滚动 */
     border: 1px solid #ebeef5;
-    border-radius: 4px;
+    border-radius: 8px; /* 增加圆角，更美观 */
     background: #fff;
     display: flex;
     flex-direction: column;
-    height: 100%;
-    min-height: 350px; /* 大幅增加表格最小高度 */
-    max-height: 400px; /* 增加表格最大高度 */
-    margin-top: 10px; /* 添加表格容器顶部间距 */
+    height: 100%; /* 充满剩余空间 */
+    max-height: 500px; /* 限制容器最大高度，确保滚动条生效 */
+    margin: 8px; /* 四周添加边距，与卡片边界保持美观距离 */
 }
 
-/* 表格卡片间距优化 */
-.table-card .el-card__body {
-    display: flex;
-    flex-direction: column;
-    height: 100% !important;
-    flex: 1;
-    padding: 15px 15px 10px 15px; /* 进一步减少内边距 */
-    overflow: hidden;
-}
+/* 表格卡片间距优化 - 已在上方定义，移除重复项 */
 
 .responsive-table {
     height: 100% !important;
-    overflow: hidden;
+    overflow: hidden; /* 表格容器本身不滚动 */
     flex: 1;
     display: flex;
     flex-direction: column;
-    max-height: 380px; /* 大幅增加表格最大高度限制 */
 }
 
 /* 强制表格充满整个容器 */
 .responsive-table .el-table {
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important; /* 改为auto，让高度由内容决定 */
     border-radius: 4px;
-    overflow: hidden;
+    overflow: hidden; /* 表格本身不滚动，由表格体滚动 */
 }
 
 /* 表格头部和主体宽度 */
@@ -2998,12 +3735,12 @@ html, body {
     height: 40px !important;
 }
 
-/* 表格主体显示更多行 - 利用增加的高度空间 */
+/* 表格主体 - 设置固定高度并启用滚动 */
 .responsive-table .el-table__body-wrapper {
-    height: calc(12 * 40px) !important; /* 从7行增加到12行 */
-    max-height: calc(12 * 40px) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    height: 300px !important; /* 设置固定高度，确保滚动条生效 */
+    max-height: 300px !important; /* 最大高度与固定高度一致 */
+    overflow-y: auto !important; /* 垂直滚动 */
+    overflow-x: hidden !important; /* 隐藏横向滚动 */
 }
 
 /* 表格行高固定 */
@@ -3013,19 +3750,7 @@ html, body {
     max-height: 40px !important;
 }
 
-/* 表格容器内边距 */
-.table-container {
-    flex: 1;
-    overflow: hidden;
-    border: 1px solid #ebeef5;
-    border-radius: 4px;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    margin: 0; /* 移除额外边距，依靠card内边距 */
-    width: 100%; /* 确保表格容器充满整个宽度 */
-}
+/* 表格容器内边距 - 已在上方定义，此处删除重复项 */
 
 /* 确保表格行高一致 */
 .responsive-table .el-table .el-table__cell {
@@ -3196,18 +3921,19 @@ html, body {
     }
     
     .slice-stack {
-        width: 70%;
-        height: 80%;
-        transform: rotateX(10deg) rotateY(-5deg);
+        width: 80%;
+        height: 75%;
+        transform: rotateX(15deg) rotateY(-10deg);
     }
     
     .slice-layer {
-        height: 85px;
+        height: 50px;
+        border-radius: 12px;
     }
     
     .slice-name {
-        font-size: 16px;
-        padding: 0 15px;
+        font-size: 18px;
+        padding: 0 16px;
     }
     
     .slice-tooltip {
@@ -3489,6 +4215,16 @@ html, body {
         height: 20px;
         line-height: 18px;
     }
+    
+    .el-tag.two-line-tag {
+        height: auto;
+        min-height: 36px;
+        padding: 4px 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.1;
+    }
 }
 
 /* ping探测列表样式 */
@@ -3602,5 +4338,282 @@ html, body {
 .retry-section .el-button {
     font-size: 12px;
     padding: 4px 8px;
+}
+
+/* 地图组件美化样式 */
+.beautify-map-card {
+    background: linear-gradient(135deg, #ffffff 0%, #fafbfc 50%, #f5f7fa 100%);
+    border-radius: 20px !important;
+    box-shadow: 
+        0 8px 40px 0 rgba(0, 0, 0, 0.08), 
+        0 3px 16px 0 rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    overflow: visible;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.beautify-map-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.03) 100%);
+    border-radius: 20px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
+}
+
+.beautify-map-card:hover {
+    box-shadow: 
+        0 12px 48px 0 rgba(0, 0, 0, 0.10), 
+        0 4px 20px 0 rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transform: translateY(-6px);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+.beautify-map-card:hover::before {
+    opacity: 1;
+}
+
+/* 覆盖Element Plus卡片默认的焦点和选中样式 */
+.beautify-map-card.el-card:focus,
+.beautify-map-card.el-card:focus-within,
+.beautify-map-card.el-card:active,
+.beautify-map-card.el-card:hover {
+    box-shadow: 
+        0 12px 48px 0 rgba(0, 0, 0, 0.10), 
+        0 4px 20px 0 rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+    outline: none !important;
+}
+
+/* 确保地图卡片的所有状态都保持灰色调 */
+.map-slice-card.el-card,
+.beautify-map-card.el-card {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.map-slice-card.el-card:hover,
+.map-slice-card.el-card:focus,
+.map-slice-card.el-card:active {
+    box-shadow: 
+        0 12px 48px 0 rgba(0, 0, 0, 0.10), 
+        0 4px 20px 0 rgba(0, 0, 0, 0.06) !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 强制覆盖Element Plus的shadow="hover"效果 */
+.el-card.is-hover-shadow:hover,
+.el-card[shadow="hover"]:hover,
+.chart-card.el-card:hover,
+.map-slice-card:hover,
+.beautify-map-card:hover,
+.responsive-card.chart-card.map-slice-card.beautify-map-card.el-card:hover {
+    box-shadow: 
+        0 12px 48px 0 rgba(0, 0, 0, 0.10), 
+        0 4px 20px 0 rgba(0, 0, 0, 0.06) !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    background: linear-gradient(135deg, #ffffff 0%, #fafbfc 50%, #f5f7fa 100%) !important;
+}
+
+/* 覆盖任何可能的蓝色边框或阴影 */
+.el-card:hover,
+.el-card:focus,
+.el-card:active {
+    box-shadow: 
+        0 12px 48px 0 rgba(0, 0, 0, 0.10), 
+        0 4px 20px 0 rgba(0, 0, 0, 0.06) !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 特别针对地图卡片的悬停效果 */
+.responsive-card.chart-card.map-slice-card.beautify-map-card {
+    transition: all 0.3s ease !important;
+}
+
+.responsive-card.chart-card.map-slice-card.beautify-map-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 
+        0 8px 32px 0 rgba(0, 0, 0, 0.12), 
+        0 3px 16px 0 rgba(0, 0, 0, 0.08) !important;
+    border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 最强优先级覆盖 - 针对Element Plus深层样式 */
+:deep(.el-card.is-hover-shadow:hover),
+:deep(.el-card[shadow="hover"]:hover),
+:deep(.chart-card.el-card:hover),
+:deep(.map-slice-card:hover),
+:deep(.beautify-map-card:hover) {
+    background: linear-gradient(135deg, #ffffff 0%, #fafbfc 50%, #f5f7fa 100%) !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    box-shadow: 
+        0 8px 32px 0 rgba(0, 0, 0, 0.12), 
+        0 3px 16px 0 rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 覆盖Element Plus的全局蓝色主题 */
+.el-card.is-hover-shadow.is-never-shadow {
+    box-shadow: none !important;
+}
+
+.el-card.is-hover-shadow.is-always-shadow,
+.el-card.is-hover-shadow {
+    --el-card-border-color: rgba(0, 0, 0, 0.1) !important;
+    --el-border-color-light: rgba(0, 0, 0, 0.1) !important;
+    --el-color-primary: #666666 !important;
+    --el-color-primary-light-3: rgba(0, 0, 0, 0.1) !important;
+    --el-color-primary-light-5: rgba(0, 0, 0, 0.08) !important;
+    --el-color-primary-light-7: rgba(0, 0, 0, 0.06) !important;
+    --el-color-primary-light-8: rgba(0, 0, 0, 0.04) !important;
+    --el-color-primary-light-9: rgba(0, 0, 0, 0.02) !important;
+}
+
+.beautify-card-header {
+    background: linear-gradient(90deg, #ffffff 0%, #f0f7ff 100%);
+    border-bottom: 2px solid #e0eaff;
+    margin-bottom: 12px;
+    padding: 16px 20px 12px 20px;
+    border-radius: 16px 16px 0 0;
+}
+
+.beautify-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #2a3b5d;
+    letter-spacing: 0.5px;
+    margin: 0;
+    text-shadow: 0 1px 2px rgba(42, 59, 93, 0.1);
+}
+
+.beautify-desc {
+    font-size: 0.95rem;
+    color: #6b7a99;
+    margin: 4px 0 0 0;
+    font-weight: 400;
+}
+
+.beautify-map-chart {
+    background: linear-gradient(135deg, #f8fbff 0%, #f0f8ff 50%, #e8f4ff 100%);
+    border-radius: 16px;
+    box-shadow: 
+        0 4px 20px 0 rgba(60, 120, 200, 0.1),
+        0 2px 10px 0 rgba(60, 120, 200, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(74, 144, 226, 0.2);
+    margin: 8px 8px 8px 12px;
+    padding: 12px;
+    transition: all 0.3s ease;
+    overflow: visible;
+    position: relative;
+}
+
+.beautify-map-chart::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(135deg, #ffffff, #ffffff, #ffffff);
+    border-radius: 18px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.beautify-map-chart:hover {
+    box-shadow: 
+        0 8px 32px 0 rgba(60, 120, 200, 0.15),
+        0 4px 16px 0 rgba(60, 120, 200, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+}
+
+.beautify-map-chart:hover::before {
+    opacity: 0.6;
+}
+
+/* 地图内容容器美化 */
+.beautify-map-card .chart-container {
+    background: transparent;
+    padding: 8px 8px 12px 8px;
+    overflow: visible; /* 确保浮动按钮不被裁剪 */
+}
+
+.beautify-map-card .left-component {
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 12px;
+    padding: 12px;
+    margin-right: 8px;
+    box-shadow: 0 1px 8px 0 rgba(60, 120, 200, 0.05);
+}
+
+.beautify-map-card .right-component {
+    background: transparent;
+}
+
+/* 探测列表窗口样式 */
+:deep(.ping-list-dialog .el-dialog) {
+    z-index: 9999 !important;
+    min-width: 720px;
+}
+
+:deep(.ping-list-dialog .el-dialog__wrapper) {
+    z-index: 9999 !important;
+}
+
+:deep(.ping-list-dialog .el-overlay) {
+    z-index: 9998 !important;
+}
+
+.ping-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.ping-item {
+    padding: 12px 16px;
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: #fafafa;
+    transition: all 0.3s ease;
+}
+
+.ping-item:hover {
+    background: #f0f0f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.ping-text {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #333;
+    line-height: 1.5;
+    word-break: break-all;
+}
+
+/* 地图容器美化 */
+.beautify-map-card .map-container {
+    border-radius: 16px;
+    overflow: visible;
+    position: relative;
+    z-index: 1;
+}
+
+.beautify-map-card .map-chart {
+    border-radius: 16px;
+    position: relative;
+    z-index: 1;
 }
 </style>

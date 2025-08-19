@@ -10,81 +10,61 @@
       "id": "BJ001",
       "name": "北京",
       "coord": [116.4074, 39.9042],
-      "AS": "AS4134",
-      "bandwidth": "10Gbps",
-      "latency": "5ms"
+      "AS": "AS4134"
     },
     {
-      "id": "SH001", 
+      "id": "SH001",
       "name": "上海",
       "coord": [121.4737, 31.2304],
-      "AS": "AS4134",
-      "bandwidth": "10Gbps",
-      "latency": "8ms"
+      "AS": "AS4134"
     },
     {
       "id": "GZ001",
-      "name": "广州", 
+      "name": "广州",
       "coord": [113.2644, 23.1291],
-      "AS": "AS4134",
-      "bandwidth": "8Gbps",
-      "latency": "12ms"
+      "AS": "AS4134"
     },
     {
       "id": "SZ001",
       "name": "深圳",
       "coord": [114.0579, 22.5431],
-      "AS": "AS4134", 
-      "bandwidth": "8Gbps",
-      "latency": "15ms"
+      "AS": "AS4134"
     },
     {
       "id": "CD001",
       "name": "成都",
       "coord": [104.0665, 30.5723],
-      "AS": "AS4134",
-      "bandwidth": "6Gbps", 
-      "latency": "18ms"
+      "AS": "AS4134"
     },
     {
       "id": "HZ001",
       "name": "杭州",
       "coord": [120.1551, 30.2741],
-      "AS": "AS4134",
-      "bandwidth": "6Gbps",
-      "latency": "10ms"
+      "AS": "AS4134"
     },
     {
       "id": "NJ001",
       "name": "南京",
       "coord": [118.7969, 32.0603],
-      "AS": "AS4134",
-      "bandwidth": "5Gbps",
-      "latency": "12ms"
+      "AS": "AS4134"
     },
     {
       "id": "WH001",
-      "name": "武汉", 
+      "name": "武汉",
       "coord": [114.3054, 30.5931],
-      "AS": "AS4134",
-      "bandwidth": "5Gbps",
-      "latency": "16ms"
+      "AS": "AS4134"
     },
     {
       "id": "XA001",
       "name": "西安",
       "coord": [108.9402, 34.3416],
-      "AS": "AS4134",
-      "bandwidth": "4Gbps",
-      "latency": "20ms"
+      "AS": "AS4134"
     },
     {
-      "id": "CQ001", 
+      "id": "CQ001",
       "name": "重庆",
       "coord": [106.5516, 29.5630],
-      "AS": "AS4134",
-      "bandwidth": "4Gbps",
-      "latency": "22ms"
+      "AS": "AS4134"
     }
   ],
   "connections": [
@@ -92,81 +72,61 @@
       "id": "conn_001",
       "points": ["BJ001", "SH001"],
       "IP": "192.168.1.1",
-      "IPv6": "2001:db8::1",
-      "bandwidth": "10Gbps",
-      "latency": "8ms"
+      "IPv6": "2001:db8::1"
     },
     {
       "id": "conn_002",
       "points": ["SH001", "HZ001"],
       "IP": "192.168.1.2",
-      "IPv6": "2001:db8::2",
-      "bandwidth": "6Gbps",
-      "latency": "5ms"
+      "IPv6": "2001:db8::2"
     },
     {
       "id": "conn_003",
       "points": ["SH001", "NJ001"],
       "IP": "192.168.1.3",
-      "IPv6": "2001:db8::3",
-      "bandwidth": "5Gbps",
-      "latency": "8ms"
+      "IPv6": "2001:db8::3"
     },
     {
       "id": "conn_004",
       "points": ["BJ001", "XA001"],
       "IP": "192.168.1.4",
-      "IPv6": "2001:db8::4",
-      "bandwidth": "4Gbps",
-      "latency": "15ms"
+      "IPv6": "2001:db8::4"
     },
     {
       "id": "conn_005",
       "points": ["SH001", "WH001"],
       "IP": "192.168.1.5",
-      "IPv6": "2001:db8::5",
-      "bandwidth": "5Gbps",
-      "latency": "12ms"
+      "IPv6": "2001:db8::5"
     },
     {
       "id": "conn_006",
       "points": ["GZ001", "SZ001"],
       "IP": "192.168.1.6",
-      "IPv6": "2001:db8::6",
-      "bandwidth": "8Gbps",
-      "latency": "3ms"
+      "IPv6": "2001:db8::6"
     },
     {
-      "id": "conn_007", 
+      "id": "conn_007",
       "points": ["CD001", "CQ001"],
       "IP": "192.168.1.7",
-      "IPv6": "2001:db8::7",
-      "bandwidth": "4Gbps",
-      "latency": "6ms"
+      "IPv6": "2001:db8::7"
     },
     {
       "id": "conn_008",
       "points": ["WH001", "CD001"],
       "IP": "192.168.1.8",
-      "IPv6": "2001:db8::8",
-      "bandwidth": "4Gbps", 
-      "latency": "18ms"
+      "IPv6": "2001:db8::8"
     },
     {
       "id": "conn_009",
       "points": ["XA001", "CD001"],
       "IP": "192.168.1.9",
-      "IPv6": "2001:db8::9",
-      "bandwidth": "3Gbps",
-      "latency": "12ms"
+      "IPv6": "2001:db8::9"
     },
     {
       "id": "conn_010",
       "points": ["SH001", "GZ001"],
       "IP": "192.168.1.10",
-      "IPv6": "2001:db8::10",
-      "bandwidth": "6Gbps",
-      "latency": "20ms"
+      "IPv6": "2001:db8::10"
     }
   ]
 }

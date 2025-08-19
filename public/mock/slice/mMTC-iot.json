@@ -2,7 +2,7 @@
   "sliceInfo": {
     "id": "mMTC-iot",
     "name": "mMTC-物联网",
-    "type": "mMTC", 
+    "type": "mMTC",
     "description": "大规模物联网切片，主要服务海量连接应用"
   },
   "cities": [
@@ -10,65 +10,49 @@
       "id": "BJ003",
       "name": "北京",
       "coord": [116.4074, 39.9042],
-      "AS": "AS17621",
-      "bandwidth": "500Mbps",
-      "latency": "50ms"
+      "AS": "AS17621"
     },
     {
       "id": "TJ001",
       "name": "天津",
       "coord": [117.1901, 39.1084],
-      "AS": "AS17621",
-      "bandwidth": "300Mbps",
-      "latency": "50ms"
+      "AS": "AS17621"
     },
     {
       "id": "SJZ001",
       "name": "石家庄",
       "coord": [114.5149, 38.0428],
-      "AS": "AS17621",
-      "bandwidth": "200Mbps",
-      "latency": "60ms"
+      "AS": "AS17621"
     },
     {
-      "id": "TY001", 
+      "id": "TY001",
       "name": "太原",
       "coord": [112.5497, 37.8570],
-      "AS": "AS17621",
-      "bandwidth": "200Mbps",
-      "latency": "60ms"
+      "AS": "AS17621"
     },
     {
       "id": "HHT001",
       "name": "呼和浩特",
       "coord": [111.6708, 40.8183],
-      "AS": "AS17621",
-      "bandwidth": "150Mbps",
-      "latency": "80ms"
+      "AS": "AS17621"
     },
     {
       "id": "SY001",
       "name": "沈阳",
       "coord": [123.4291, 41.7971],
-      "AS": "AS17621",
-      "bandwidth": "250Mbps",
-      "latency": "70ms"
+      "AS": "AS17621"
     },
     {
       "id": "CC001",
       "name": "长春",
       "coord": [125.3245, 43.8171],
-      "AS": "AS17621",
-      "bandwidth": "200Mbps", 
-      "latency": "80ms"
+      "AS": "AS17621"
     },
     {
       "id": "HEB001",
       "name": "哈尔滨",
       "coord": [126.5361, 45.8021],
-      "AS": "AS17621",
-      "bandwidth": "200Mbps",
-      "latency": "90ms"
+      "AS": "AS17621"
     }
   ],
   "connections": [
@@ -76,65 +60,49 @@
       "id": "conn_001",
       "points": ["BJ003", "TJ001"],
       "IP": "172.16.1.1",
-      "IPv6": "2001:db8:2::1",
-      "bandwidth": "300Mbps",
-      "latency": "20ms"
+      "IPv6": "2001:db8:2::1"
     },
     {
       "id": "conn_002",
       "points": ["BJ003", "SJZ001"],
       "IP": "172.16.1.2",
-      "IPv6": "2001:db8:2::2",
-      "bandwidth": "200Mbps",
-      "latency": "30ms"
+      "IPv6": "2001:db8:2::2"
     },
     {
       "id": "conn_003",
       "points": ["BJ003", "TY001"],
       "IP": "172.16.1.3",
-      "IPv6": "2001:db8:2::3",
-      "bandwidth": "150Mbps",
-      "latency": "40ms"
+      "IPv6": "2001:db8:2::3"
     },
     {
       "id": "conn_004",
       "points": ["BJ003", "HHT001"],
       "IP": "172.16.1.4",
-      "IPv6": "2001:db8:2::4",
-      "bandwidth": "100Mbps",
-      "latency": "50ms"
+      "IPv6": "2001:db8:2::4"
     },
     {
       "id": "conn_005",
       "points": ["BJ003", "SY001"],
       "IP": "172.16.1.5",
-      "IPv6": "2001:db8:2::5",
-      "bandwidth": "200Mbps",
-      "latency": "35ms"
+      "IPv6": "2001:db8:2::5"
     },
     {
       "id": "conn_006",
       "points": ["SY001", "CC001"],
       "IP": "172.16.1.6",
-      "IPv6": "2001:db8:2::6",
-      "bandwidth": "150Mbps",
-      "latency": "25ms"
+      "IPv6": "2001:db8:2::6"
     },
     {
       "id": "conn_007",
       "points": ["CC001", "HEB001"],
       "IP": "172.16.1.7",
-      "IPv6": "2001:db8:2::7",
-      "bandwidth": "150Mbps",
-      "latency": "30ms"
+      "IPv6": "2001:db8:2::7"
     },
     {
       "id": "conn_008",
       "points": ["TJ001", "SJZ001"],
       "IP": "172.16.1.8",
-      "IPv6": "2001:db8:2::8",
-      "bandwidth": "100Mbps",
-      "latency": "40ms"
+      "IPv6": "2001:db8:2::8"
     }
   ]
 }

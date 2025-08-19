@@ -13,7 +13,7 @@ app.use(express.json());
 const dbConfig = {
     host: 'localhost',
     user: 'root',
-    password: 'xxxxx', // Change this to your MySQL password
+    password: 'cnptzhaoky', // Change this to your MySQL password
     database: 'network_delay_db'
 };
 
