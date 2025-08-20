@@ -1,7 +1,7 @@
 <template>
     <div class="dashboard-container">
         <!-- 切片筛选条 -->
-        <div class="slice-filter-bar mgb20">
+        <div class="slice-filter-bar">
             <div class="filter-content">
                 <div class="stats-section">
                     <div class="slice-stats-group">
@@ -18,151 +18,41 @@
                             <span class="stats-label">空闲切片</span>
                         </div>
                     </div>
-                    <!-- 切片可用性色块组 -->
-                    <div class="availability-stats-group">
-                        <div class="availability-title">全网切片可用性：</div>
-                        <div class="availability-items">
-                            <div class="availability-item available">
-                                <div class="availability-number">{{ networkAvailability.available }}</div>
-                                <div class="availability-label">可用</div>
-                            </div>
-                            <div class="availability-item exception">
-                                <div class="availability-number">{{ networkAvailability.exception }}</div>
-                                <div class="availability-label">异常</div>
-                            </div>
-                            <div class="availability-item unavailable">
-                                <div class="availability-number">{{ networkAvailability.unavailable }}</div>
-                                <div class="availability-label">不可用</div>
-                            </div>
-                            <div class="availability-item unknown">
-                                <div class="availability-number">{{ networkAvailability.unknown }}</div>
-                                <div class="availability-label">未知</div>
-                            </div>
-                            <div class="availability-item total">
-                                <div class="availability-number">{{ networkAvailability.total }}</div>
-                                <div class="availability-label">合计</div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
                 <div class="filter-section">
-                    <span class="filter-label">切片组切换</span>
+                    <span class="filter-label">切片选择</span>
                     <el-select
-                        v-model="selectedSliceGroup"
-                        placeholder="选择切片组"
-                        @change="handleSliceGroupChange"
+                        v-model="selectedSlice"
+                        placeholder="选择切片"
+                        @change="handleSliceChange"
                         size="small"
                         class="filter-select"
+                        filterable
+                        clearable
                     >
                         <el-option 
-                            v-for="group in sliceGroups" 
-                            :key="group.value"
-                            :label="group.label" 
-                            :value="group.value" 
+                            v-for="slice in networkSlices" 
+                            :key="slice.id"
+                            :label="slice.name" 
+                            :value="slice.id" 
                         />
                     </el-select>
                 </div>
             </div>
         </div>
 
-        <el-row :gutter="20" class="mgb20 responsive-row chart-row">
-              <el-col :xs="22" :sm="22" :md="16" :lg="16" :xl="16">
-                <el-card shadow="hover" class="responsive-card chart-card map-slice-card beautify-map-card" style="height:100%;display:flex;flex-direction:column;">
-                    <div class="card-header beautify-card-header">
-                        <p class="card-header-title beautify-title">切片延迟</p>
+        <el-row :gutter="20" class="responsive-row chart-row">
+              <el-col :xs="24" :sm="24" :md="16" :lg="16" :xl="16">
+                <el-card shadow="hover" class="responsive-card chart-card map-slice-card beautify-map-card" style="height:1000px;width:100%;">
+                    <div class="card-header beautify-card-header" style="height:60px;">
+                        <p class="card-header-title beautify-title">数据大盘</p>
                     </div>
-                    <div class="chart-container">
-                        <!-- 左半部分：切片可视化 -->
-                        <div class="left-component">
-                            <div class="slice-visualizer">
-                                <div class="slice-header" style="display:flex;align-items:center;gap:16px;">
-                                    <div>
-                                        <h3 style="margin-bottom:0;">切片可视化</h3>
-                                        <p style="margin:0;">选择要查看的网络切片</p>
-                                    </div>
-                                    <el-button type="primary" @click="showPingListPopup = true" size="small" style="margin-left:8px;">当前切片探测列表</el-button>
-                                    <el-dialog 
-                                        v-model="showPingListPopup" 
-                                        title="当前切片探测列表" 
-                                        width="720px" 
-                                        :close-on-click-modal="true" 
-                                        :append-to-body="true"
-                                        :z-index="9999"
-                                        :modal="true"
-                                        class="ping-list-dialog"
-                                    >
-                                        <div v-if="isPingListLoading" class="loading-text">
-                                            加载探测数据中...
-                                        </div>
-                                        <div v-else-if="!pingListData?.pingList || pingListData.pingList.length === 0" class="empty-text">
-                                            暂无探测数据
-                                        </div>
-                                        <div v-else class="ping-list">
-                                            <div 
-                                                v-for="ping in pingListData.pingList" 
-                                                :key="ping.id"
-                                                class="ping-item"
-                                            >
-                                                <div class="ping-endpoints">
-                                                    <span class="ping-text">src: {{ ping.src }}, dst: {{ ping.dst }}, interval: {{ ping.interval }}, protocol: {{ ping.protocol }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </el-dialog>
-                                </div>
-                                <div class="zoom-controls">
-                                    <button @click="zoomIn" class="zoom-btn">+</button>
-                                    <button @click="zoomOut" class="zoom-btn">-</button>
-                                    <button @click="resetZoom" class="zoom-btn">重置</button>
-                                </div>
-                                <div class="slice-stack-container" @wheel="handleZoom">
-                                    <div class="slice-stack" :style="{ transform: `scale(${zoomLevel})` }">
-                                        <div 
-                                            v-for="(slice, index) in displayedSlices" 
-                                            :key="slice.id"
-                                            :class="[
-                                                'slice-layer', 
-                                                { 
-                                                    'active': selectedSlice === slice.id,
-                                                    'switching': isSliceSwitching && selectedSlice === slice.id
-                                                }
-                                            ]"
-                                            :style="getSliceStyle(index)"
-                                            @click="selectSlice(slice.id)"
-                                            @mouseenter="hoveredSlice = slice.id"
-                                            @mouseleave="hoveredSlice = null"
-                                        >
-                                            <div class="slice-content">
-                                                <div class="slice-name">{{ slice.name }}</div>
-                                            </div>
-                                            <!-- 警告图标 - 当切片有待处理或处理中的问题时显示 -->
-                                            <div 
-                                                v-if="hasSliceIssues(slice.name)" 
-                                                class="slice-warning-icon"
-                                                title="此切片存在待处理或处理中的问题"
-                                            >
-                                                ⚠️
-                                            </div>
-                                            <!-- 悬浮提示 - 只显示名字 -->
-                                            <div 
-                                                v-if="hoveredSlice === slice.id" 
-                                                class="slice-tooltip"
-                                            >
-                                                <div class="tooltip-title">{{ slice.name }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="selected-slice-info" v-if="selectedSliceInfo">
-                                    <h4>当前选择: {{ selectedSliceInfo.name }}</h4>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- 右半部分：地图/拓扑 -->
-                        <div class="right-component">
+                    <div class="chart-container" style="height:720px;width:100%;">
+                        <!-- 地图/拓扑占满整个卡片 -->
+                        <div class="full-map-component">
                             <div class="map-container">
                                 <v-chart 
-                                    class="map-chart beautify-map-chart" 
+                                    class="beautify-map-chart" 
                                     :option="viewMode === 'geographic' ? enhancedMapOptions : topologyOptions" 
                                     @click="handleMapClick"
                                     :key="viewMode"
@@ -186,11 +76,48 @@
                                         >
                                             拓扑
                                         </el-button>
+                                        <el-button 
+                                            type="info"
+                                            size="small"
+                                            @click="showPingListPopup = true"
+                                            class="floating-btn"
+                                        >
+                                            探测列表
+                                        </el-button>
                                     </div>
                                     <div class="floating-description">
                                         {{ viewMode === 'geographic' ? '地理视图' : '拓扑视图' }}
                                     </div>
                                 </div>
+                                <!-- 切片探测列表弹窗 -->
+                                <el-dialog 
+                                    v-model="showPingListPopup" 
+                                    title="当前切片探测列表" 
+                                    width="720px" 
+                                    :close-on-click-modal="true" 
+                                    :append-to-body="true"
+                                    :z-index="9999"
+                                    :modal="true"
+                                    class="ping-list-dialog"
+                                >
+                                    <div v-if="isPingListLoading" class="loading-text">
+                                        加载探测数据中...
+                                    </div>
+                                    <div v-else-if="!pingListData?.pingList || pingListData.pingList.length === 0" class="empty-text">
+                                        暂无探测数据
+                                    </div>
+                                    <div v-else class="ping-list">
+                                        <div 
+                                            v-for="ping in pingListData.pingList" 
+                                            :key="ping.id"
+                                            class="ping-item"
+                                        >
+                                            <div class="ping-endpoints">
+                                                <span class="ping-text">src: {{ ping.src }}, dst: {{ ping.dst }}, interval: {{ ping.interval }}, protocol: {{ ping.protocol }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </el-dialog>
                             </div>
                         </div>
                     </div>
@@ -202,26 +129,27 @@
                     <div class="popup-title">24小时时延</div>
                     <v-chart
                         :option="timelineOptions"
-                        style="width: 340px; height: 220px; margin-top: 8px;"
+                        style="width: 420px; height: 280px; margin-top: 10px;"
                     />
-                    <el-button size="mini" type="text" @click="showDelayPopup = false" style="margin-top:8px;">关闭</el-button>
+                    <el-button size="mini" type="text" @click="showDelayPopup = false" style="margin-top:12px; font-size: 16px;">关闭</el-button>
                 </div>
             </transition>
-            <el-col :xs="26" :sm="26" :md="8" :lg="8" :xl="8">
-                <el-card shadow="hover" class="responsive-card table-card" style="height:100%;display:flex;flex-direction:column;">
-                    <div class="card-header beautify-card-header">
-                        <p class="card-header-title beautify-title">当前问题</p>
+            <el-col :xs="24" :sm="24" :md="8" :lg="8" :xl="8">
+                <el-card shadow="hover" class="responsive-card table-card" style="height:600px;width:100%;">
+                    <div class="card-header beautify-card-header" style="height:60px;">
+                        <p class="card-header-title beautify-title">故障报警</p>
                     </div>
-                    <div class="table-container">
+                    <div class="table-container" style="height:720px;width:100%;">
                         <el-table 
                             :data="currentIssuesData" 
-                            style="width: 100%" 
+                            style="width: 100%; height: 100%;" 
                             class="responsive-table"
                             @row-click="handleIssueRowClick"
                             :row-style="{ cursor: 'pointer' }"
+                            :key="`table-${selectedSlice}`"
                         >
                             <el-table-column prop="id" label="问题ID" min-width="60" />
-                            <el-table-column prop="type" label="问题类型" min-width="60">
+                            <el-table-column prop="type" label="问题类型" min-width="70">
                                 <template #default="scope">
                                     <el-tag 
                                         :type="getIssueTypeColor(scope.row.type)"
@@ -236,11 +164,11 @@
                                     </el-tag>
                                 </template>
                             </el-table-column>
-                            <el-table-column prop="description" label="问题描述" min-width="80"/>
-                            <el-table-column prop="slice" label="所属切片" min-width="60" />
+                            <el-table-column prop="description" label="问题描述" min-width="100"/>
+                            <el-table-column prop="slice" label="所属切片" min-width="80" />
                             <el-table-column prop="location" label="位置" min-width="80">
                                 <template #default="scope">
-                                    {{ formatLinkName(scope.row.location, scope.row.slice || selectedSlice) }}
+                                    {{ formatLinkNameFromRow(scope.row) }}
                                 </template>
                             </el-table-column>
                             <el-table-column prop="createTime" label="发现时间" min-width="80">
@@ -291,7 +219,7 @@ const handleMapClick = (params) => {
             if (params.event && params.event.event) {
                 const { offsetX, offsetY } = params.event.event;
                 // 获取地图容器的实际偏移
-                const mapEl = document.querySelector('.map-chart');
+                const mapEl = document.querySelector('.beautify-map-chart');
                 let mapRect = { left: 0, top: 0 };
                 if (mapEl) mapRect = mapEl.getBoundingClientRect();
                 // 浮窗宽高应与样式保持一致
@@ -363,16 +291,14 @@ registerMap('china', chinaMap);
 const selectedRoute = ref('');
 
 // 视图模式切换
-const viewMode = ref('geographic'); // 'geographic' 或 'topology'
+const viewMode = ref('topology'); // 'geographic' 或 'topology' - 默认为拓扑视图
 
 // 地图聚焦相关变量
 const mapCenter = ref([104, 35]); // 地图中心坐标
 const mapZoom = ref(1.5); // 地图缩放级别
 
-// 3D切片可视化相关变量
+// 3D切片可视化相关变量（部分已废弃）
 const selectedSlice = ref('physical-network'); // 默认选择物理网络，使用数据库中的实际名称
-const hoveredSlice = ref(null);
-const zoomLevel = ref(1);
 const isSliceSwitching = ref(false);
 
 // 网络拓扑数据
@@ -429,32 +355,6 @@ watch([selectedRoute, realDelayData], ([route, delayList]) => {
     currentLinkDelay.value = { avgDelay: avg, maxDelay: max, minDelay: min };
 });
 
-// 缩放控制函数
-const zoomIn = () => {
-    if (zoomLevel.value < 2) {
-        zoomLevel.value += 0.1;
-    }
-};
-
-const zoomOut = () => {
-    if (zoomLevel.value > 0.5) {
-        zoomLevel.value -= 0.1;
-    }
-};
-
-const resetZoom = () => {
-    zoomLevel.value = 1;
-};
-
-const handleZoom = (event) => {
-    event.preventDefault();
-    if (event.deltaY < 0) {
-        zoomIn();
-    } else {
-        zoomOut();
-    }
-};
-
 // 处理问题表格行点击事件
 const handleIssueRowClick = async (row) => {
     console.log('点击问题行:', row);
@@ -474,8 +374,8 @@ const handleIssueRowClick = async (row) => {
         }
     }
     
-    // 2. 切换到地理视图
-    viewMode.value = 'geographic';
+    // 2. 切换到拓扑视图（而不是地理视图）
+    viewMode.value = 'topology';
     
     // 3. 聚焦到对应的链路
     if (row.location) {
@@ -494,8 +394,8 @@ const focusOnLink = async (location) => {
         // 根据位置ID找到对应的城市坐标
         const locationParts = location.split('-');
         if (locationParts.length >= 2) {
-            const city1Id = parseInt(locationParts[0]);
-            const city2Id = parseInt(locationParts[1]);
+            const city1Id = locationParts[0]; // 保持为字符串，不强制转换
+            const city2Id = locationParts[1]; // 保持为字符串，不强制转换
             
             // 从当前切片的城市数据中查找坐标
             const currentSliceInfo = selectedSliceInfo.value;
@@ -504,8 +404,17 @@ const focusOnLink = async (location) => {
                 const sliceData = allSliceTopologies.value[sliceKey];
                 
                 if (sliceData && sliceData.cities) {
-                    const city1 = sliceData.cities.find(c => c.id === city1Id);
-                    const city2 = sliceData.cities.find(c => c.id === city2Id);
+                    // 尝试多种匹配方式：ID匹配（字符串和数字）、名称匹配
+                    const city1 = sliceData.cities.find(c => 
+                        String(c.id) === String(city1Id) || 
+                        c.id === parseInt(city1Id) || 
+                        c.name === city1Id
+                    );
+                    const city2 = sliceData.cities.find(c => 
+                        String(c.id) === String(city2Id) || 
+                        c.id === parseInt(city2Id) || 
+                        c.name === city2Id
+                    );
                     
                     if (city1 && city2) {
                         // 计算两个城市的中点坐标
@@ -518,9 +427,10 @@ const focusOnLink = async (location) => {
                         // 设置适当的缩放级别
                         mapZoom.value = 3;
                         
-                        console.log(`聚焦到链路中点: [${centerLng}, ${centerLat}]`);
+                        console.log(`聚焦到链路中点: [${centerLng}, ${centerLat}] (${city1.name} ↔ ${city2.name})`);
                     } else {
-                        console.warn('未找到城市坐标信息');
+                        console.warn(`未找到城市坐标信息: ${city1Id} -> ${city1 ? '找到' : '未找到'}, ${city2Id} -> ${city2 ? '找到' : '未找到'}`);
+                        console.log('可用城市列表:', sliceData.cities.map(c => ({ id: c.id, name: c.name })));
                     }
                 } else {
                     console.warn('未找到切片数据');
@@ -586,48 +496,9 @@ const getSliceColor = (index) => {
     return colorPalette[index % colorPalette.length];
 };
 
-// 3D切片样式生成
-const getSliceStyle = (index) => {
-    // 反转索引，让第一个元素（物理网络）显示在最上面
-    const reverseIndex = networkSlices.value.length - 1 - index;
-    const zOffset = reverseIndex * 12; // 减小Z轴偏移
-    const yOffset = -reverseIndex * 5; // 减小Y轴偏移
-    const scale = 1 - reverseIndex * 0.008; // 减小缩放差异
-    const sliceColor = getSliceColor(index);
-    
-    return {
-        transform: `translateZ(${zOffset}px) translateY(${yOffset}px) scale(${scale})`,
-        zIndex: networkSlices.value.length - reverseIndex, // 物理网络有最高的zIndex
-        backgroundColor: sliceColor + '20',
-        borderColor: sliceColor
-    };
-};
-
 // 选择切片
 const selectSlice = (sliceId) => {
-    // 设置切换状态
-    isSliceSwitching.value = true;
-    
-    // 添加平滑过渡效果
-    const currentActive = document.querySelector('.slice-layer.active') as HTMLElement;
-    if (currentActive) {
-        currentActive.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-    }
-    
     selectedSlice.value = sliceId;
-    
-    // 等待DOM更新后，为新选中的切片添加过渡效果
-    nextTick(() => {
-        const newActive = document.querySelector('.slice-layer.active') as HTMLElement;
-        if (newActive) {
-            newActive.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-        }
-        
-        // 延迟重置切换状态，让动画完成
-        setTimeout(() => {
-            isSliceSwitching.value = false;
-        }, 300);
-    });
     
     // 切换到对应的网络拓扑
     switchSliceTopology(sliceId);
@@ -655,15 +526,28 @@ const loadAllSliceTopologies = async () => {
                     const sliceId = filename.replace('.json', '');
                     topologies[sliceId] = data;
                     console.log(`成功加载切片拓扑: ${sliceId}`, data);
+                    return { success: true, sliceId, data };
                 } else {
                     console.warn(`切片拓扑文件不存在: ${filename}`);
+                    return { success: false, filename, error: 'File not found' };
                 }
             } catch (error) {
                 console.error(`加载切片拓扑失败: ${filename}`, error);
+                return { success: false, filename, error: error.message };
             }
         });
         
-        await Promise.all(loadPromises);
+        // 使用 Promise.allSettled 替代 Promise.all，这样单个失败不会影响其他
+        const results = await Promise.allSettled(loadPromises);
+        
+        // 处理结果，只记录失败的情况但不阻止继续执行
+        results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+                console.error(`切片拓扑加载Promise失败: ${sliceFiles[index]}`, result.reason);
+            } else if (result.value && !result.value.success) {
+                console.warn(`切片拓扑加载失败: ${result.value.filename}`, result.value.error);
+            }
+        });
         
         allSliceTopologies.value = topologies;
         
@@ -747,34 +631,129 @@ const getSliceTopologyKey = (sliceId) => {
 // 格式化链路名称显示 - 只在指定切片拓扑查找ID对应的城市名称
 // sliceKey: 切片id或文件名（如 physical-network）
 const formatLinkName = (linkId, sliceKey) => {
-    if (!linkId || linkId === 'all') {
-        return linkId;
-    }
-
-    // 解析链路ID (格式: "BJ001-SH002" 或 "0-1")
-    const parts = linkId.split('-');
-    if (parts.length !== 2) {
-        return linkId; // 如果格式不正确，返回原始ID
-    }
-
-    const [sourceId, targetId] = parts;
-
-    // 只在指定切片拓扑查找
-    let topo = null;
-    if (sliceKey && allSliceTopologies.value && allSliceTopologies.value[sliceKey]) {
-        topo = allSliceTopologies.value[sliceKey];
-    } else if (networkTopology.value) {
-        topo = networkTopology.value;
-    }
-    if (topo && Array.isArray(topo.cities)) {
-        const sourceCity = topo.cities.find(city => String(city.id) === String(sourceId));
-        const targetCity = topo.cities.find(city => String(city.id) === String(targetId));
-        if (sourceCity && targetCity) {
-            return `${sourceCity.name} ↔ ${targetCity.name}`;
+    try {
+        if (!linkId || linkId === 'all') {
+            return linkId;
         }
+
+        // 解析链路ID (格式: "BJ001-SH002" 或 "0-1")
+        const parts = linkId.split('-');
+        if (parts.length !== 2) {
+            return linkId; // 如果格式不正确，返回原始ID
+        }
+
+        const [sourceId, targetId] = parts;
+
+        // 只在指定切片拓扑查找
+        let topo = null;
+        if (sliceKey && allSliceTopologies.value && allSliceTopologies.value[sliceKey]) {
+            topo = allSliceTopologies.value[sliceKey];
+        } else if (networkTopology.value) {
+            topo = networkTopology.value;
+        }
+        
+        if (topo && Array.isArray(topo.cities)) {
+            console.log(`查找城市 ${sourceId} 和 ${targetId} 在切片 ${sliceKey}`);
+            console.log(`可用城市:`, topo.cities.map(c => ({id: c.id, name: c.name})));
+            
+            // 先尝试通过 ID 匹配
+            let sourceCity = topo.cities.find(city => String(city.id) === String(sourceId));
+            let targetCity = topo.cities.find(city => String(city.id) === String(targetId));
+            
+            console.log(`ID匹配结果: ${sourceId} -> ${sourceCity ? sourceCity.name : '未找到'}, ${targetId} -> ${targetCity ? targetCity.name : '未找到'}`);
+            
+            // 如果通过 ID 找不到，尝试通过 name 匹配（防止ID和name混用的情况）
+            if (!sourceCity) {
+                sourceCity = topo.cities.find(city => String(city.name) === String(sourceId));
+                if (sourceCity) console.log(`通过名称找到源城市: ${sourceId} -> ${sourceCity.name}`);
+            }
+            if (!targetCity) {
+                targetCity = topo.cities.find(city => String(city.name) === String(targetId));
+                if (targetCity) console.log(`通过名称找到目标城市: ${targetId} -> ${targetCity.name}`);
+            }
+            
+            // 如果找到了对应的城市，返回城市名称
+            if (sourceCity && targetCity) {
+                return `${sourceCity.name} ↔ ${targetCity.name}`;
+            }
+            
+            // 如果只找到一个城市，尝试将另一个作为城市名直接显示
+            if (sourceCity && !targetCity) {
+                return `${sourceCity.name} ↔ ${targetId}`;
+            }
+            if (!sourceCity && targetCity) {
+                return `${sourceId} ↔ ${targetCity.name}`;
+            }
+        } else {
+            console.warn(`未找到切片拓扑数据或城市数据: sliceKey=${sliceKey}, topo=`, topo);
+        }
+        
+        // 如果找不到对应的城市，返回原始ID
+        return linkId;
+    } catch (error) {
+        // 如果格式化过程中出现任何错误，返回原始ID而不影响其他条目
+        console.warn(`格式化链路名称时出错: ${linkId}`, error);
+        return linkId || 'N/A';
     }
-    // 如果找不到对应的城市，返回原始ID
-    return linkId;
+};
+
+// 从表格行数据格式化链路名称 - 专门处理表格行的情况
+const formatLinkNameFromRow = (row) => {
+    try {
+        if (!row || !row.location) {
+            return 'N/A';
+        }
+        
+        let sliceKey = null;
+        
+        // 优先使用行数据中的切片信息
+        if (row.slice) {
+            // 如果row.slice是切片名称，需要转换为sliceKey
+            const sliceInfo = networkSlices.value.find(slice => slice.name === row.slice);
+            if (sliceInfo) {
+                sliceKey = sliceInfo.filename ? sliceInfo.filename.replace('.json', '') : sliceInfo.id;
+            } else {
+                // 如果找不到匹配的切片，尝试几种可能的切片key格式
+                const possibleKeys = [
+                    row.slice,
+                    row.slice.toLowerCase().replace(/\s+/g, '-'),
+                    row.slice.toLowerCase().replace(/\s+/g, '_')
+                ];
+                
+                for (const key of possibleKeys) {
+                    if (allSliceTopologies.value && allSliceTopologies.value[key]) {
+                        sliceKey = key;
+                        break;
+                    }
+                }
+                
+                // 如果还是找不到，使用row.slice作为key
+                if (!sliceKey) {
+                    sliceKey = row.slice;
+                }
+            }
+        }
+        
+        // 如果没有找到切片key，使用当前选中的切片
+        if (!sliceKey) {
+            const currentSliceInfo = selectedSliceInfo.value;
+            if (currentSliceInfo && currentSliceInfo.filename) {
+                sliceKey = currentSliceInfo.filename.replace('.json', '');
+            } else {
+                sliceKey = selectedSlice.value;
+            }
+        }
+        
+        console.log(`格式化表格行位置: ${row.location}, 行切片: ${row.slice}, 使用切片key: ${sliceKey}`);
+        console.log(`可用的切片拓扑:`, Object.keys(allSliceTopologies.value || {}));
+        
+        const result = formatLinkName(row.location, sliceKey);
+        console.log(`格式化结果: ${result}`);
+        return result;
+    } catch (error) {
+        console.warn(`格式化表格行位置时出错:`, error);
+        return row.location || 'N/A';
+    }
 };
 
 // 保留原来的函数名作为兼容
@@ -1925,43 +1904,6 @@ const topologyOptions = computed(() => {
     }
 });
 
-// 链路可用性数据
-const linkAvailability = ref({
-    available: 31,
-    unavailable: 0,
-    unknown: 0,
-    exception: 5,
-    total: 36
-});
-
-// 全网可用性数据 - 根据当前问题动态计算
-const networkAvailability = computed(() => {
-    // 计算不同状态的问题数量
-    const pendingInterruption = currentIssuesData.value.filter(issue => 
-        issue.type === '中断' && issue.status === '待处理'
-    ).length;
-    
-    const pendingDelayDrop = currentIssuesData.value.filter(issue => 
-        issue.type === '延迟下降' && issue.status === '待处理'  
-    ).length;
-    
-    const processing = currentIssuesData.value.filter(issue => 
-        issue.status === '处理中'
-    ).length;
-    
-    const totalActive = sliceStats.value.active;
-    const available = Math.max(0, totalActive - pendingInterruption - pendingDelayDrop - processing);
-    
-    return {
-        available: available,           // 可用
-        exception: pendingDelayDrop,    // 异常（待处理的延迟下降）
-        unavailable: pendingInterruption, // 不可用（待处理的中断）
-        unknown: processing,            // 未知（处理中）
-        total: totalActive              // 合计
-    };
-});
-
-
 const routeData = computed(() => {
     if (!networkTopology.value) return {};
     
@@ -2063,6 +2005,15 @@ const timelineOptions = computed(() => {
 
     // 处理真实时延数据
     let filteredData = realDelayData.value;
+    
+    // 添加调试信息
+    console.log('=== 24小时时延数据调试 ===');
+    console.log('原始数据总量:', filteredData ? filteredData.length : 0);
+    console.log('当前选中切片:', selectedSlice.value);
+    console.log('样本原始数据:', filteredData ? filteredData.slice(0, 3) : []);
+    if (filteredData && filteredData.length > 0) {
+        console.log('数据中的所有切片名称:', [...new Set(filteredData.map(item => item.slice))]);
+    }
     
     // 根据选中的切片过滤数据
     if (selectedSlice.value && selectedSlice.value !== 'all') {
@@ -2241,33 +2192,12 @@ const currentIssuesData = computed(() => {
     return alertMock.currentIssues;
 });
 
-// 检查切片是否有待处理或处理中的问题
-const hasSliceIssues = (sliceName: string) => {
-    return currentIssuesData.value.some(issue => 
-        issue.slice === sliceName && 
-        (issue.status === '待处理' || issue.status === '处理中')
-    );
-};
-
-// 选择的切片组
+// 选择的切片组（已废弃，保留以防兼容性问题）
 const selectedSliceGroup = ref(1);
 
-// 切片组配置
+// 切片组配置（已废弃，保留以防兼容性问题）
 const sliceGroups = computed(() => {
-    const activeSliceCount = networkSlices.value.length;
-    const groups = [];
-    const totalGroups = Math.ceil(activeSliceCount / 10);
-    
-    for (let i = 1; i <= totalGroups; i++) {
-        const start = (i - 1) * 10 + 1;
-        const end = Math.min(i * 10, activeSliceCount);
-        groups.push({
-            value: i,
-            label: `${start}-${end}`
-        });
-    }
-    
-    return groups;
+    return [];
 });
 
 // 总切片数配置
@@ -2286,27 +2216,20 @@ const sliceStats = computed(() => {
     };
 });
 
-// 当前显示的切片数据（基于选择的组）
-const displayedSlices = computed(() => {
-    const startIndex = (selectedSliceGroup.value - 1) * 10;
-    const endIndex = selectedSliceGroup.value * 10;
-    return networkSlices.value.slice(startIndex, endIndex);
-});
-
 // 过滤后的切片数据（使用动态加载的切片数据）
 const filteredSliceData = computed(() => {
     return networkSlices.value;
 });
 
-// 切片组变化处理
+// 切片组变化处理（已废弃，保留以防兼容性问题）
 const handleSliceGroupChange = (value: number) => {
-    selectedSliceGroup.value = value;
-    
-    // 检查当前选择的切片是否在新组中，如果不在则重置选择
-    const currentSelectedInNewGroup = displayedSlices.value.find(slice => slice.id === selectedSlice.value);
-    if (!currentSelectedInNewGroup && displayedSlices.value.length > 0) {
-        // 如果当前选择的切片不在新组中，选择新组的第一个切片
-        selectSlice(displayedSlices.value[0].id);
+    // 不再使用切片组，此函数保留为空以避免错误
+};
+
+// 切片选择变化处理
+const handleSliceChange = (sliceId: string) => {
+    if (sliceId) {
+        selectSlice(sliceId);
     }
 };
 
@@ -2377,11 +2300,12 @@ onMounted(async () => {
     loadDelayData(); // 加载实时时延数据
     // 初始化默认切片（物理网络）的拓扑和探测数据
     switchSliceTopology('physical-network');
-});
-    // 确保初始选择第一组的第一个切片
-    if (displayedSlices.value.length > 0) {
-        selectSlice(displayedSlices.value[0].id);
+    
+    // 确保初始选择第一个可用切片
+    if (networkSlices.value.length > 0) {
+        selectSlice(networkSlices.value[0].id);
     }
+});
 </script>
 
 <style>
@@ -2398,7 +2322,6 @@ html, body {
 }
 
 .card-body {
-    display: flex;
     align-items: center;
     height: 100px;
     padding: 0;
@@ -2408,19 +2331,27 @@ html, body {
 /* 链路时延浮窗样式优化 */
 .delay-popup {
     position: absolute;
-    min-width: 380px;
-    min-height: 260px;
+    min-width: 460px;
+    min-height: 320px;
     background: #fff;
     border: 3px solid #409eff;
     box-shadow: 0 10px 40px rgba(0,0,0,0.32);
     border-radius: 14px;
-    padding: 22px 28px 18px 28px;
+    padding: 26px 32px 22px 32px;
     color: #222;
     font-size: 17px;
     z-index: 10000; /* 进一步提高 z-index，确保在所有元素之上 */
     pointer-events: auto;
     opacity: 1;
     transition: all 0.18s cubic-bezier(.4,0,.2,1);
+}
+
+.delay-popup .popup-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #409eff;
+    margin-bottom: 12px;
+    text-align: center;
 }
 /* 通用间距类 */
 .mgb20 {
@@ -2451,26 +2382,28 @@ html, body {
     min-height: 300px; /* 恢复基础高度 */
 }
 
-/* 确保页面底部有足够间距 */
+/* 确保页面不会超出视口高度，禁止滚动 */
 .dashboard-container {
     padding-bottom: 0; /* 移除页面底部间距 */
-    min-height: calc(100vh - 80px); /* 考虑头部导航高度，剩余空间用于内容 */
-    display: flex;
-    flex-direction: column;
+    height: 100vh; /* 精确使用视口高度 */
+    max-height: 100vh; /* 防止超出 */
+    overflow: hidden; /* 禁止滚动 */
     gap: 20px; /* 为各行添加间距 */
+    padding: 20px; /* 添加整体内边距 */
+    box-sizing: border-box; /* 确保padding包含在总高度内 */
 }
 
 /* 确保表格行能充满剩余空间 */
 .dashboard-container .table-row {
-    flex: 1; /* 让表格行占用剩余的可用空间 */
+    height: 400px; /* 固定表格行高度 */
 }
 
 .card-content {
-    flex: 1;
     text-align: center;
     font-size: 14px;
     color: #999;
     padding: 0 20px;
+    height: 100px; /* 固定高度 */
 }
 
 .card-num {
@@ -2542,7 +2475,6 @@ html, body {
 }
 
 .timeline-item {
-    display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 16px;
@@ -2557,66 +2489,54 @@ html, body {
 
 /* 图表容器布局 */
 .chart-container {
-    display: flex !important;
-    flex-direction: row !important; /* 强制水平排列 */
     width: 100%;
     height: 100%;
     gap: 2px; /* 进一步减少左右组件之间的间距 */
-    flex: 1;
     align-items: stretch; /* 确保子元素等高 */
-    flex-wrap: nowrap !important; /* 禁止换行 */
-    justify-content: flex-start; /* 改为左对齐，确保有足够间距 */
     padding: 0; /* 完全移除容器内边距 */
+    overflow: hidden; /* 防止内容超出边界 */
+}
+
+/* 全宽地图组件样式 */
+.full-map-component {
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* 防止内容超出边界 */
 }
 
 .left-component {
-    flex: 0 0 24%; /* 增加左侧宽度到24% */
-    display: flex;
-    flex-direction: column;
-    width: 24%; /* 增加左侧宽度到24% */
-    max-width: 24%; /* 防止宽度超出 */
+    width: 24%; /* 固定左侧宽度 */
+    height: 100%;
     align-self: stretch; /* 确保垂直拉伸 */
 }
 
 .right-component {
-    flex: 0 0 76%; /* 增加右侧宽度到76% */
-    display: flex;
-    flex-direction: column; /* 改为垂直布局，给地图容器更多空间 */
-    width: 76%; /* 增加右侧宽度到76% */
-    max-width: 76%; /* 防止宽度超出 */
+    width: 76%; /* 固定右侧宽度 */
     height: 100%;
     align-self: stretch; /* 确保垂直拉伸 */
 }
 
 /* 表格卡片容器 - 确保充满剩余高度 */
 .right-component .el-col:last-child {
-    flex: 1;
     height: 100%;
-    display: flex;
-    flex-direction: column;
 }
 
 /* 地图容器占据全部空间 */
 .map-container {
-    flex: 1;
     position: relative;
     height: 100%;
     width: 100%;
-    overflow: visible; /* 确保浮动按钮不被裁剪 */
+    overflow: hidden; /* 防止地图超出边界 */
 }
 
-/* 地图图表占据全部空间 */
-.map-chart {
-    width: 100% !important;
-    height: 100% !important;
-}
+/* 地图图表占据全部空间 - 已移除，使用v-chart默认样式 */
 
 /* 浮动切换按钮样式 */
 .floating-view-switcher {
     position: absolute;
     top: 16px;
     right: 16px;
-    z-index: 100;
+    z-index: 200; /* 提高z-index确保显示在最上层 */
     background: rgba(255, 255, 255, 0.95);
     border-radius: 12px;
     padding: 12px;
@@ -2632,7 +2552,6 @@ html, body {
 }
 
 .floating-buttons {
-    display: flex;
     gap: 6px;
     margin-bottom: 6px;
 }
@@ -2671,9 +2590,6 @@ html, body {
         rgba(240, 248, 255, 0.8) 0%, 
         rgba(230, 245, 255, 0.6) 50%, 
         rgba(245, 250, 255, 0.8) 100%);
-    display: flex;
-    flex-direction: column;
-    flex: 1;
     box-shadow: 
         0 20px 60px rgba(0, 0, 0, 0.08),
         0 8px 32px rgba(0, 0, 0, 0.04);
@@ -2724,15 +2640,13 @@ html, body {
 }
 
 .slice-stack-container {
-    flex: 1;
-    display: flex;
+    height: calc(100% - 80px); /* 固定高度，减去标题和其他元素的高度 */
     align-items: center;
     justify-content: center;
     perspective: 2000px;
     perspective-origin: 50% 40%;
     position: relative;
     width: 100%;
-    height: 100%;
     overflow: hidden;
     padding: 20px 20px;
     background: linear-gradient(135deg, 
@@ -2746,7 +2660,6 @@ html, body {
     position: absolute;
     top: 20px;
     right: 20px;
-    display: flex;
     gap: 8px;
     z-index: 100;
     background: rgba(255, 255, 255, 0.95);
@@ -2766,7 +2679,6 @@ html, body {
         rgba(255, 255, 255, 0.8) 100%);
     border-radius: 8px;
     cursor: pointer;
-    display: flex;
     align-items: center;
     justify-content: center;
     font-size: 16px;
@@ -2817,7 +2729,6 @@ html, body {
         rgba(255, 255, 255, 0.85) 100%);
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 
@@ -2948,7 +2859,6 @@ html, body {
     position: relative;
     z-index: 10;
     width: 100%;
-    display: flex;
     align-items: center;
     justify-content: center;
     padding: 0 16px;
@@ -2999,7 +2909,6 @@ html, body {
     background: linear-gradient(90deg, #ffffff, #f0f0f0);
 }
 
-/* 警告图标样式 */
 .slice-warning-icon {
     position: absolute;
     right: 8px;
@@ -3007,7 +2916,6 @@ html, body {
     font-size: 16px;
     color: #ff4d4f;
     animation: pulse 2s infinite;
-    display: flex;
     align-items: center;
     justify-content: center;
     width: 20px;
@@ -3132,9 +3040,8 @@ html, body {
 }
 
 .slice-details {
-    display: flex;
     gap: 12px;
-    flex-wrap: wrap;
+    width: 100%; /* 固定宽度 */
 }
 
 .detail-item {
@@ -3237,110 +3144,21 @@ html, body {
     }
 }
 
-.map-chart {
-    width: 90%;
-    flex: 1;
-    min-height: 400px; /* 大幅增加地图组件高度 */
-    max-height: 450px; /* 增加最大高度 */
-    border: 2px solid #000000; /* 黑色边框 */
-    border-radius: 8px; /* 圆角边框 */
-    padding: 8px; /* 减少内边距 */
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* 黑色阴影效果 */
-    box-sizing: border-box; /* 确保边框包含在尺寸内 */
-    background-color: #fafafa; /* 添加背景色，使边框更明显 */
-}
+/* 第二个map-chart定义已移除 - 样式冗余且冲突 */
 .timeline-chart {
     width: 100%;
-    flex: 1;
+    height: calc(100% - 80px); /* 固定高度，减去标题区域 */
     min-height: 450px; /* 大幅增加时间线图表高度 */
-    max-height: 500px; /* 增加最大高度 */
 }
 
-/* 链路可用性样式 */
-.availability-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: stretch;
-    height: auto;
-    padding: 6px 4px;
-    gap: 3px;
-    min-height: 80px;
-    flex-wrap: nowrap !important;
-    flex-direction: row !important;
-}
+/* 链路可用性样式 - 已删除 */
 
-.availability-item {
-    text-align: center;
-    padding: 8px 4px;
-    border-radius: 6px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    margin: 0;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-}
-
-.availability-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.availability-item.available {
-    background: linear-gradient(135deg, #52c41a, #73d13d);
-    color: white;
-}
-
-.availability-item.unavailable {
-    background: linear-gradient(135deg, #ff4d4f, #ff7875);
-    color: white;
-}
-
-.availability-item.unknown {
-    background: linear-gradient(135deg, #8c8c8c, #bfbfbf);
-    color: white;
-}
-
-.availability-item.exception {
-    background: linear-gradient(135deg, #ff8c00, #ffa500);
-    color: white;
-}
-
-.availability-item.total {
-    background: linear-gradient(135deg, #1890ff, #40a9ff);
-    color: white;
-}
-
-.availability-number {
-    font-size: 16px;
-    font-weight: bold;
-    margin-bottom: 4px;
-    line-height: 1;
-}
-
-.availability-label {
-    font-size: 9px;
-    opacity: 0.9;
-    font-weight: 500;
-}
-
-/* 全网可用性样式 */
-.network-availability {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 120px;
-    padding: 10px;
-}
+/* availability样式已删除 */
 
 .network-status-circle {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
     margin-bottom: 10px;
@@ -3378,14 +3196,11 @@ html, body {
 }
 
 .network-details {
-    display: flex;
     gap: 15px;
     font-size: 12px;
 }
 
 .detail-item {
-    display: flex;
-    flex-direction: column;
     align-items: center;
 }
 
@@ -3406,6 +3221,9 @@ html, body {
     padding: 15px 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     border: 1px solid #e8e8e8;
+    height: 70px; /* 固定高度 */
+    flex-shrink: 0; /* 防止被压缩 */
+    box-sizing: border-box; /* 确保padding包含在高度内 */
 }
 
 .filter-content {
@@ -3424,71 +3242,6 @@ html, body {
 .slice-stats-group {
     display: flex;
     gap: 30px;
-}
-
-/* 可用性统计组 - 包含标题和色块 */
-.availability-stats-group {
-    display: flex;
-    align-items: center;
-    gap: 20px; /* 标题与色块之间的间距增加一点 */
-}
-
-/* 可用性标题 */
-.availability-title {
-    font-size: 14px;
-    font-weight: 500;
-    color: #333;
-    white-space: nowrap;
-}
-
-/* 可用性色块容器 */
-.availability-items {
-    display: flex;
-    gap: 2px; /* 色块之间很小的间距 */
-}
-
-/* 统计栏中的availability-item样式 */
-.stats-section .availability-item {
-    text-align: center;
-    padding: 8px 12px;
-    border-radius: 6px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    min-width: 60px;
-}
-
-.stats-section .availability-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.stats-section .availability-item.available {
-    background: linear-gradient(135deg, #52c41a, #73d13d);
-    color: white;
-}
-
-.stats-section .availability-item.unavailable {
-    background: linear-gradient(135deg, #ff4d4f, #ff7875);
-    color: white;
-}
-
-.stats-section .availability-item.unknown {
-    background: linear-gradient(135deg, #8c8c8c, #bfbfbf);
-    color: white;
-}
-
-.stats-section .availability-item.exception {
-    background: linear-gradient(135deg, #ff8c00, #ffa500);
-    color: white;
-}
-
-.stats-section .availability-item.total {
-    background: linear-gradient(135deg, #1890ff, #40a9ff);
-    color: white;
 }
 
 .stats-item {
@@ -3552,47 +3305,17 @@ html, body {
     margin-bottom: 20px;
 }
 
-/* 可用性行 - 压缩30%高度 */
-.availability-row {
-    height: 176px;
-    max-height: 176px;
-    overflow: hidden;
-    margin-bottom: 25px;
-}
-
-.availability-row .el-col {
-    height: 100%;
-}
-
-.availability-row .responsive-card {
-    height: 100% !important;
-    min-height: unset !important;
-}
-
-.availability-row .el-card__body {
-    height: calc(100% - 10px) !important;
-    min-height: unset !important;
-    padding: 10px !important;
-}
-
-.availability-row .card-header {
-    margin-bottom: 10px;
-}
-
 /* 表格行 - 确保等高并紧挨着，水平排列 */
 .table-row {
     margin-bottom: 0; /* 移除表格行底部间距 */
-    display: flex !important;
     align-items: stretch;
     gap: 5px;
-    flex-wrap: nowrap;
     /* 移除固定高度，让行自适应内容 */
 }
 
 .table-row .el-col {
-    display: flex !important;
     padding: 0 !important;
-    flex: 1;
+    width: calc(50% - 2.5px); /* 固定宽度，两列均分 */
     height: 100%;
 }
 
@@ -3603,105 +3326,79 @@ html, body {
 
 /* 主要卡片样式 */
 .responsive-card .el-card__body {
-    height: auto;
-    min-height: 500px; /* 恢复卡片高度 */
+    height: 100%; /* 占满整个卡片 */
     padding: 20px;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: auto; /* 改为auto以允许滚动查看隐藏内容 */
+    overflow: hidden; /* 防止溢出，由内部组件处理滚动 */
 }
 
 /* 确保chart-container充分利用空间 */
 .responsive-card .chart-container {
-    flex: 1;
-    min-height: 220px; /* 进一步降低内部组件高度 */
-    max-height: 260px; /* 进一步降低最大高度 */
-    display: flex !important;
-    flex-direction: row !important; /* 确保水平布局 */
+    height: calc(100% - 80px); /* 固定高度，减去标题区域 */
     overflow: hidden; /* 防止内容溢出 */
-}
-
-/* 可用性卡片 */
-.availability-card .el-card__body {
-    height: auto;
-    display: flex;
-    flex-direction: column;
 }
 
 /* 表格卡片 - 确保与左侧卡片等高 */
 .table-card {
     height: 100% !important; /* 与左侧chart-card保持一致 */
-    display: flex;
-    flex-direction: column;
     z-index: 1; /* 确保z-index低于浮动窗口 */
 }
 
 .table-card .el-card__body {
-    display: flex;
-    flex-direction: column;
     height: 100% !important; /* 充满卡片高度 */
-    flex: 1;
     padding: 20px; /* 与左侧卡片保持一致的内边距 */
-    overflow: hidden; /* 卡片体不滚动，由内部表格滚动 */
+    overflow: hidden; /* 由内部表格处理滚动 */
 }
 
 /* 图表行样式 - 确保切片延迟和链路时延卡片等高 */
 .chart-row {
-    display: flex;
     align-items: stretch; /* 确保子元素等高 */
-    flex: 0 0 auto; /* 固定尺寸，不参与剩余空间分配 */
+    min-height: calc(100vh - 140px); /* 占满剩余高度，减去顶部筛选栏 */
     position: relative; /* 为延迟弹窗提供定位上下文 */
     overflow: visible; /* 确保弹窗不被裁剪 */
 }
 
 .chart-row .el-col {
-    display: flex;
-    flex-direction: column;
+    height: 100%; /* 固定高度 */
 }
 
 .chart-card {
     height: 100% !important;
-    display: flex;
-    flex-direction: column;
 }
 
 .chart-card .el-card__body {
     height: 100% !important;
-    flex: 1;
-    display: flex !important;
-    flex-direction: column !important;
     padding: 20px;
     overflow: auto; /* 允许滚动查看隐藏内容 */
 }
 
+/* 地图卡片特殊样式 - 减少内边距让地图占据更多空间 */
+.beautify-map-card .el-card__body {
+    padding: 8px !important; /* 大幅减少内边距 */
+}
+
 /* 地图和切片可视化卡片特殊样式 */
 .map-slice-card {
-    min-height: 600px; /* 与chart-card保持一致的外层容器高度 */
+    min-height: 480px; /* 减少20%：600px * 0.8 = 480px */
 }
 
 .map-slice-card .el-card__body {
-    min-height: 550px; /* 与chart-card保持一致的内部高度 */
+    min-height: 440px; /* 减少20%：550px * 0.8 = 440px */
     padding: 20px 0 20px 20px; /* 只移除右边距，保持其他方向的padding */
 }
 
 /* 确保chart-container和timeline-chart都充分利用空间 */
 .chart-card .chart-container,
 .chart-card .timeline-chart {
-    flex: 1;
-    min-height: 450px; /* 大幅增加内部组件高度 */
-    max-height: 500px; /* 增加最大高度 */
+    height: calc(100% - 80px); /* 固定高度，减去标题区域 */
+    min-height: 360px; /* 减少20%：450px * 0.8 = 360px */
 }
 
 .table-container {
-    flex: 1;
-    overflow: hidden; /* 容器本身不滚动 */
+    overflow: visible; /* 确保滚动条可见 */
     border: 1px solid #ebeef5;
     border-radius: 8px; /* 增加圆角，更美观 */
     background: #fff;
-    display: flex;
-    flex-direction: column;
-    height: 100%; /* 充满剩余空间 */
-    max-height: 500px; /* 限制容器最大高度，确保滚动条生效 */
+    height: calc(100% - 80px); /* 固定高度，减去标题区域 */
     margin: 8px; /* 四周添加边距，与卡片边界保持美观距离 */
 }
 
@@ -3709,16 +3406,13 @@ html, body {
 
 .responsive-table {
     height: 100% !important;
-    overflow: hidden; /* 表格容器本身不滚动 */
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+    overflow: visible; /* 确保内部滚动条可见 */
 }
 
 /* 强制表格充满整个容器 */
 .responsive-table .el-table {
     width: 100% !important;
-    height: auto !important; /* 改为auto，让高度由内容决定 */
+    height: 100% !important; /* 充满容器 */
     border-radius: 4px;
     overflow: hidden; /* 表格本身不滚动，由表格体滚动 */
 }
@@ -3735,27 +3429,28 @@ html, body {
     height: 40px !important;
 }
 
-/* 表格主体 - 设置固定高度并启用滚动 */
+/* 表格主体 - 充满剩余空间并自动滚动 */
 .responsive-table .el-table__body-wrapper {
-    height: 300px !important; /* 设置固定高度，确保滚动条生效 */
-    max-height: 300px !important; /* 最大高度与固定高度一致 */
-    overflow-y: auto !important; /* 垂直滚动 */
+    height: calc(100% - 40px); /* 固定高度，减去表头高度 */
+    overflow-y: scroll !important; /* 强制显示垂直滚动条 */
     overflow-x: hidden !important; /* 隐藏横向滚动 */
+    max-height: 300px !important; /* 临时设置较小高度确保滚动 */
+    min-height: 200px !important; /* 设置最小高度确保能看到内容 */
 }
 
 /* 表格行高固定 */
 .responsive-table .el-table .el-table__row {
-    height: 40px !important; /* 固定行高保持紧凑 */
-    min-height: 40px !important;
-    max-height: 40px !important;
+    height: 50px !important; /* 稍微增加行高以容纳更多内容 */
+    min-height: 50px !important;
+    max-height: 50px !important; /* 确保行高严格固定 */
 }
 
-/* 表格容器内边距 - 已在上方定义，此处删除重复项 */
-
-/* 确保表格行高一致 */
+/* 表格单元格高度固定 */
 .responsive-table .el-table .el-table__cell {
     padding: 8px 4px !important; /* 调整padding保持紧凑 */
     vertical-align: middle !important;
+    height: 50px !important; /* 与行高保持一致 */
+    line-height: 1.4 !important; /* 优化文字行间距 */
 }
 
 /* 表格列宽自适应优化 */
@@ -3776,28 +3471,30 @@ html, body {
 
 /* 美化滚动条 */
 .responsive-table .el-table__body-wrapper::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 12px; /* 进一步增加宽度让滚动条更明显 */
+    height: 12px;
 }
 
 .responsive-table .el-table__body-wrapper::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0; /* 添加边框让轨道更明显 */
 }
 
 .responsive-table .el-table__body-wrapper::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
+    background: #409EFF; /* 使用Element Plus主色调 */
+    border-radius: 6px;
+    border: 2px solid #f5f5f5; /* 添加白色边框增强对比 */
 }
 
 .responsive-table .el-table__body-wrapper::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
+    background: #337ecc; /* 悬停时更深的蓝色 */
 }
 
-/* 图表自适应 */
-.map-chart, .timeline-chart {
+/* 图表自适应 - 保留timeline-chart，移除重复的map-chart */
+.timeline-chart {
     width: 100%;
-    flex: 1;
+    height: calc(100% - 80px); /* 固定高度，减去标题区域 */
     min-height: 400px;
 }
 
@@ -3807,22 +3504,16 @@ html, body {
 }
 
 .filter-content {
-    flex-wrap: wrap;
+    display: flex;
     gap: 20px;
 }
 
 /* 响应式断点 */
 @media (min-width: 769px) {
     /* 桌面端强制水平布局 */
-    .chart-container {
-        flex-direction: row !important;
-    }
-    
     .left-component,
     .right-component {
-        flex: 0 0 40% !important;
         width: 40% !important;
-        max-width: 40% !important;
     }
     
     .left-component {
@@ -3837,27 +3528,13 @@ html, body {
 }
 
 @media (max-width: 1200px) {
-    .availability-row {
-        height: 165px;
-        max-height: 165px;
-        margin-bottom: 25px;
-    }
-    
     .table-row {
-        display: flex !important;
-        flex-direction: row !important;
         align-items: stretch;
         gap: 5px;
-        flex-wrap: nowrap !important;
     }
     
     .table-row .el-col {
-        display: flex !important;
-        flex: 1;
-    }
-    
-    .availability-number {
-        font-size: 24px;
+        width: calc(50% - 2.5px); /* 固定宽度 */
     }
     
     .stats-number {
@@ -3883,7 +3560,6 @@ html, body {
     
     .responsive-card {
         margin-bottom: 10px;
-        max-height: 350px; /* 移动端进一步限制高度 */
     }
     
     .card-header {
@@ -3892,27 +3568,24 @@ html, body {
     }
     
     .chart-container {
-        flex-direction: column !important; /* 小屏幕时垂直排列 */
         gap: 10px; /* 减少垂直间距 */
         padding: 5px; /* 减少容器内边距 */
-        max-height: 200px; /* 移动端进一步限制容器高度 */
+    }
+    
+    /* 全宽地图组件在移动端的样式 */
+    .full-map-component {
+        min-height: 300px; /* 移动端减少最小高度 */
     }
     
     .left-component,
     .right-component {
-        flex: none; /* 取消flex比例 */
         width: 100% !important; /* 全宽度 */
         margin-bottom: 10px; /* 减少底部间距 */
     }
     
     .slice-visualizer {
         min-height: 300px; /* 增加移动端切片可视化高度 */
-        max-height: 350px; /* 增加移动端最大高度 */
         padding: 8px; /* 进一步减少移动端内边距 */
-    }
-    
-    .table-container {
-        max-height: 300px; /* 增加移动端表格高度限制 */
     }
     
     .selected-slice-info {
@@ -3952,57 +3625,26 @@ html, body {
         border-right-color: transparent;
     }
     
-    .availability-row {
-        height: 132px;
-        max-height: 132px;
-        margin-bottom: 20px;
-    }
-    
     .responsive-card .el-card__body {
         min-height: 400px;
         padding: 15px;
     }
     
-    .availability-card .el-card__body {
-        min-height: 69px;
-    }
-    
     .table-card .el-card__body {
         min-height: 266px;
-        max-height: 266px;
     }
     
     .responsive-table .el-table__body-wrapper {
         height: calc(5 * 36px) !important;
-        max-height: 180px;
     }
     
     .responsive-table .el-table .el-table__row {
         height: 36px;
     }
     
-    .map-chart, .timeline-chart {
-        min-height: 350px; /* 增加移动端地图和时间线图表高度 */
-    }
-    
-    .availability-number {
-        font-size: 12px;
-    }
-    
-    .availability-label {
-        font-size: 7px;
-    }
-    
-    .availability-container {
-        gap: 2px;
-        min-height: 60px;
-        padding: 5px 3px;
-        flex-wrap: nowrap !important;
-        flex-direction: row !important;
-    }
-    
-    .availability-item {
-        padding: 6px 3px;
+    /* 移动端只保留timeline-chart样式 */
+    .timeline-chart {
+        min-height: 350px; /* 增加移动端时间线图表高度 */
     }
     
     .stats-number {
@@ -4042,17 +3684,13 @@ html, body {
     
     .table-row {
         margin-bottom: 15px;
-        display: flex !important;
-        flex-direction: row !important;
         align-items: stretch;
         gap: 3px;
-        flex-wrap: nowrap !important;
     }
     
     .table-row .el-col {
-        display: flex !important;
         margin-bottom: 0;
-        flex: 1;
+        width: calc(50% - 1.5px); /* 固定宽度 */
     }
     
     .card-header-title {
@@ -4065,19 +3703,9 @@ html, body {
 }
 
 @media (max-width: 480px) {
-    .availability-row {
-        height: 110px;
-        max-height: 110px;
-        margin-bottom: 15px;
-    }
-    
     .responsive-card .el-card__body {
         min-height: 350px;
         padding: 10px;
-    }
-    
-    .availability-card .el-card__body {
-        min-height: 100px;
     }
     
     .table-row {
@@ -4091,44 +3719,19 @@ html, body {
     
     .table-card .el-card__body {
         min-height: 320px;
-        max-height: 320px;
     }
     
     .responsive-table .el-table__body-wrapper {
         height: calc(6 * 32px) !important;
-        max-height: 192px;
     }
     
     .responsive-table .el-table .el-table__row {
         height: 32px;
     }
     
-    .map-chart, .timeline-chart {
+    /* 平板端只保留timeline-chart样式 */
+    .timeline-chart {
         min-height: 250px;
-    }
-    
-    .availability-container {
-        padding: 5px 3px;
-        flex-wrap: nowrap !important;
-        flex-direction: row !important;
-        min-height: 55px;
-        gap: 2px;
-    }
-    
-    .availability-item {
-        flex: 1;
-        min-width: 36px;
-        padding: 5px 2px;
-        font-size: 9px;
-    }
-    
-    .availability-number {
-        font-size: 12px;
-        margin-bottom: 3px;
-    }
-    
-    .availability-label {
-        font-size: 7px;
     }
     
     .stats-section {
@@ -4170,15 +3773,13 @@ html, body {
     }
 }
 
-/* 确保容器使用flex布局 */
+/* 确保容器使用固定布局 */
 .card-header {
-    flex-shrink: 0;
+    height: 60px; /* 固定高度 */
 }
 
 .responsive-card .el-card__body > div:last-child {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+    height: calc(100% - 60px); /* 固定高度，减去标题高度 */
 }
 
 /* 表格列响应式调整 */
@@ -4220,7 +3821,6 @@ html, body {
         height: auto;
         min-height: 36px;
         padding: 4px 6px;
-        display: flex;
         align-items: center;
         justify-content: center;
         line-height: 1.1;
@@ -4229,18 +3829,16 @@ html, body {
 
 /* ping探测列表样式 */
 .header-content {
-    display: flex;
     justify-content: space-between;
     align-items: flex-start;
     width: 100%;
 }
 
 .header-left {
-    flex: 1;
+    width: calc(100% - 120px); /* 固定宽度，减去右侧宽度 */
 }
 
 .header-right {
-    display: flex;
     align-items: center;
     margin-top: 5px;
 }
@@ -4258,18 +3856,14 @@ html, body {
 
 .table-container {
     height: 100%;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
+    width: 100%; /* 固定宽度 */
 }
 
 .ping-list {
-    flex: 1;
     overflow-y: auto;
     padding: 10px 12px; /* 减少内边距 */
     height: 100%;
     min-height: 350px; /* 大幅增加ping列表高度 */
-    max-height: 400px; /* 增加最大高度以充分利用空间 */
 }
 
 .ping-item {
@@ -4313,7 +3907,6 @@ html, body {
 }
 
 .loading-text, .empty-text {
-    display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
@@ -4508,11 +4101,14 @@ html, body {
         0 2px 10px 0 rgba(60, 120, 200, 0.05),
         inset 0 1px 0 rgba(255, 255, 255, 0.8);
     border: 1px solid rgba(74, 144, 226, 0.2);
-    margin: 8px 8px 8px 12px;
-    padding: 12px;
+    margin: 0; /* 移除margin，防止超出边界 */
+    padding: 8px; /* 减少padding */
     transition: all 0.3s ease;
-    overflow: visible;
+    overflow: hidden; /* 防止内容超出边界 */
     position: relative;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box; /* 确保padding包含在总尺寸内 */
 }
 
 .beautify-map-chart::before {
@@ -4544,7 +4140,7 @@ html, body {
 /* 地图内容容器美化 */
 .beautify-map-card .chart-container {
     background: transparent;
-    padding: 8px 8px 12px 8px;
+    padding: 0; /* 移除内边距，让地图占据更多空间 */
     overflow: visible; /* 确保浮动按钮不被裁剪 */
 }
 
@@ -4575,7 +4171,6 @@ html, body {
 }
 
 .ping-list {
-    max-height: 400px;
     overflow-y: auto;
     padding: 8px;
 }
@@ -4611,9 +4206,5 @@ html, body {
     z-index: 1;
 }
 
-.beautify-map-card .map-chart {
-    border-radius: 16px;
-    position: relative;
-    z-index: 1;
-}
+/* 美化地图卡片样式已简化，移除多余的map-chart定义 */
 </style>
