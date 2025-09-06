@@ -1,0 +1,172 @@
+{
+  "topology_name": "SR-MESH网络拓扑",
+  "version": "1.0",
+  "description": "示例SR-MESH网络拓扑配置",
+  "nodes": [
+    {
+      "id": "BJ001",
+      "name": "北京节点",
+      "location": [116.4074, 39.9042],
+      "ssh": {
+        "host": "192.168.1.10",
+        "port": 22,
+        "username": "root",
+        "password": "bj123456"
+      },
+      "config": {
+        "router_id": "10.0.1.1",
+        "loopback": "192.168.1.1/32"
+      }
+    },
+    {
+      "id": "SH001", 
+      "name": "上海节点",
+      "location": [121.4737, 31.2304],
+      "ssh": {
+        "host": "192.168.1.20",
+        "port": 22,
+        "username": "root",
+        "password": "sh123456"
+      },
+      "config": {
+        "router_id": "10.0.1.2",
+        "loopback": "192.168.1.2/32"
+      }
+    },
+    {
+      "id": "GZ001",
+      "name": "广州节点", 
+      "location": [113.2644, 23.1291],
+      "ssh": {
+        "host": "192.168.1.30",
+        "port": 22,
+        "username": "root",
+        "password": "gz123456"
+      },
+      "config": {
+        "router_id": "10.0.1.3",
+        "loopback": "192.168.1.3/32"
+      }
+    },
+    {
+      "id": "SZ001",
+      "name": "深圳节点",
+      "location": [114.0579, 22.5431],
+      "ssh": {
+        "host": "192.168.1.40",
+        "port": 22,
+        "username": "root",
+        "password": "sz123456"
+      },
+      "config": {
+        "router_id": "10.0.1.4",
+        "loopback": "192.168.1.4/32"
+      }
+    },
+    {
+      "id": "CD001",
+      "name": "成都节点",
+      "location": [104.0665, 30.5723],
+      "ssh": {
+        "host": "192.168.1.50",
+        "port": 22,
+        "username": "root",
+        "password": "cd123456"
+      },
+      "config": {
+        "router_id": "10.0.1.5",
+        "loopback": "192.168.1.5/32"
+      }
+    },
+    {
+      "id": "XA001",
+      "name": "西安节点",
+      "location": [108.9398, 34.3416],
+      "ssh": {
+        "host": "192.168.1.60",
+        "port": 22,
+        "username": "root",
+        "password": "xa123456"
+      },
+      "config": {
+        "router_id": "10.0.1.6",
+        "loopback": "192.168.1.6/32"
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "link_001",
+      "source": "BJ001",
+      "target": "SH001",
+      "config": {
+        "interface_a": "GigabitEthernet0/0/1",
+        "interface_b": "GigabitEthernet0/0/1",
+        "subnet": "172.16.1.0/30"
+      }
+    },
+    {
+      "id": "link_002", 
+      "source": "SH001",
+      "target": "GZ001",
+      "config": {
+        "interface_a": "GigabitEthernet0/0/2",
+        "interface_b": "GigabitEthernet0/0/1", 
+        "subnet": "172.16.2.0/30"
+      }
+    },
+    {
+      "id": "link_003",
+      "source": "GZ001", 
+      "target": "SZ001",
+      "config": {
+        "interface_a": "GigabitEthernet0/0/2",
+        "interface_b": "GigabitEthernet0/0/1",
+        "subnet": "172.16.3.0/30"
+      }
+    },
+    {
+      "id": "link_004",
+      "source": "BJ001",
+      "target": "XA001",
+      "config": {
+        "interface_a": "GigabitEthernet0/0/2", 
+        "interface_b": "GigabitEthernet0/0/1",
+        "subnet": "172.16.4.0/30"
+      }
+    },
+    {
+      "id": "link_005",
+      "source": "XA001",
+      "target": "CD001",
+      "config": {
+        "interface_a": "GigabitEthernet0/0/2", 
+        "interface_b": "GigabitEthernet0/0/1",
+        "subnet": "172.16.5.0/30"
+      }
+    },
+    {
+      "id": "link_006",
+      "source": "CD001",
+      "target": "GZ001",
+      "config": {
+        "interface_a": "GigabitEthernet0/0/2", 
+        "interface_b": "GigabitEthernet0/0/3",
+        "subnet": "172.16.6.0/30"
+      }
+    }
+  ],
+  "slices": [
+    {
+      "id": "test",
+      "name": "测试网络",
+      "description": "测试网络切片",
+      "path": ["BJ001", "SH001", "GZ001", "SZ001", "CD001", "XA001"]
+    }
+  ],
+  "monitoring": {
+    "ping_interval": "1s",
+    "health_check_interval": "30s", 
+    "log_level": "INFO"
+  }
+}

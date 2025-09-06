@@ -68,12 +68,8 @@ const sidebar = useSidebarStore();
 
 <style scoped>
 .sidebar {
-    display: block;
-    position: absolute;
-    left: 0;
-    top: 70px;
-    bottom: 0;
-    overflow-y: scroll;
+    height: 100%;
+    overflow-y: auto;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -81,10 +77,11 @@ const sidebar = useSidebarStore();
 }
 
 .sidebar-el-menu:not(.el-menu--collapse) {
-    width: 250px;
+    width: 100%;
 }
 
 .sidebar-el-menu {
     min-height: 100%;
+    border-right: none;
 }
 </style>

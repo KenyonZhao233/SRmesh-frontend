@@ -13,7 +13,7 @@
                         <span class="user-info">
                             <el-icon><User /></el-icon>
                             Admin
-                            <el-icon class="el-icon--right"><arrow-down /></el-icon>
+                            <el-icon class="el-icon--right"><ArrowDown /></el-icon>
                         </span>
                         <template #dropdown>
                             <el-dropdown-menu>
@@ -27,19 +27,28 @@
                 </div>
             </div>
         </header>
-        
-        <main class="layout-main">
-            <router-view />
-        </main>
+
+        <div class="layout-body">
+            <aside class="layout-sidebar" :style="{ width: sidebar.collapse ? '64px' : '250px' }">
+                <Sidebar />
+            </aside>
+            <main class="layout-main">
+                <router-view />
+            </main>
+        </div>
     </div>
+    
 </template>
 
 <script setup lang="ts">
 import { User, ArrowDown, SwitchButton } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useRouter } from 'vue-router';
+import Sidebar from '@/components/sidebar.vue';
+import { useSidebarStore } from '@/store/sidebar';
 
 const router = useRouter();
+const sidebar = useSidebarStore();
 
 const handleCommand = (command: string) => {
     if (command === 'logout') {
@@ -111,5 +120,17 @@ const handleCommand = (command: string) => {
     flex: 1;
     overflow: auto;
     background: #f5f5f5;
+}
+
+.layout-body {
+    display: flex;
+    flex: 1;
+    min-height: 0; /* 防止子元素溢出 */
+}
+
+.layout-sidebar {
+    height: calc(100vh - 60px);
+    background: #242f42;
+    overflow: hidden;
 }
 </style>

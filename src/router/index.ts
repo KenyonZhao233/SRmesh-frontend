@@ -25,13 +25,76 @@ const routes: RouteRecordRaw[] = [
         component: Home,
         children: [
             {
-                path: '/dashboard',
+                path: 'dashboard',
                 name: 'dashboard',
+                alias: '/dashboard',
                 meta: {
                     title: '系统首页',
                     requiresAuth: true,
                 },
                 component: () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard.vue'),
+            },
+            {
+                path: 'monitor-management',
+                name: 'monitor-management',
+                alias: '/monitor-management',
+                meta: { title: '监控管理', requiresAuth: true },
+                component: () => import('../views/monitor-management.vue'),
+            },
+            {
+                path: 'fault-handling',
+                name: 'fault-handling',
+                alias: '/fault-handling',
+                meta: { title: '故障处理', requiresAuth: true },
+                component: () => import('../views/fault-handling.vue'),
+            },
+            // 设备管理
+            {
+                path: 'device-management',
+                name: 'device-management',
+                meta: { title: '网络设备管理', requiresAuth: true },
+                redirect: '/device-management/groups',
+                children: [
+                    {
+                        path: 'groups',
+                        name: 'device-groups',
+                        alias: '/device-management/groups',
+                        meta: { title: '组管理', requiresAuth: true },
+                        component: () => import('../views/device-management/groups.vue'),
+                    },
+                    {
+                        path: 'devices',
+                        name: 'devices',
+                        alias: '/device-management/devices',
+                        meta: { title: '设备管理', requiresAuth: true },
+                        component: () => import('../views/device-management/devices.vue'),
+                    },
+                    {
+                        path: 'batch-add',
+                        name: 'batch-add',
+                        alias: '/device-management/batch-add',
+                        meta: { title: '批量添加', requiresAuth: true },
+                        component: () => import('../views/device-management/batch-add.vue'),
+                    },
+                    {
+                        path: 'task-management',
+                        name: 'task-management',
+                        alias: '/device-management/task-management',
+                        meta: { title: '任务配置', requiresAuth: true },
+                        component: () => import('../views/device-management/task-management.vue'),
+                    },
+                    {
+                        path: 'snmp',
+                        name: 'snmp-info',
+                        alias: '/device-management/snmp',
+                        meta: { title: 'SNMP信息', requiresAuth: true },
+                        component: () => import('../views/device-management/snmp.vue'),
+                    },
+                ],
+            },
+            {
+                path: '',
+                redirect: 'dashboard',
             },
         ],
     },
