@@ -10,14 +10,22 @@ export const menuData: Menus[] = [
     {
         id: '2',
         title: '监控管理',
-        index: '/monitor-management',
+        index: '2',
         icon: 'TrendCharts',
-    },
-    {
-        id: '3',
-        title: '故障处理',
-        index: '/fault-handling',
-        icon: 'Warning',
+        children: [
+            {
+                id: '21',
+                pid: '2',
+                index: '/monitor-management',
+                title: '主动探测代理管理',
+            },
+                {
+                    id: '22',
+                    pid: '2',
+                    index: '/telemetry',
+                    title: '遥测信息管理',
+                },
+        ],
     },
     {
         id: '4',
@@ -41,20 +49,32 @@ export const menuData: Menus[] = [
                 id: '43',
                 pid: '4',
                 index: '/device-management/batch-add',
-                title: '批量添加',
+                title: '批量添加设备',
             },
             {
                 id: '44',
                 pid: '4',
                 index: '/device-management/task-management',
-                title: '任务配置',
+                title: '任务配置下发',
             },
             {
                 id: '45',
                 pid: '4',
                 index: '/device-management/snmp',
-                title: 'SNMP信息',
+                title: 'SNMP查询',
             },
         ],
+    },
+    {
+        id: '5',
+        title: '遥测信息',
+        index: '/telemetry',
+        icon: 'DataAnalysis',
+    },
+    {
+        id: '3',
+        title: '故障处理',
+        index: '/fault-handling',
+        icon: 'Warning',
     },
 ];

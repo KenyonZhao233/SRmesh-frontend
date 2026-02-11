@@ -42,6 +42,13 @@ const routes: RouteRecordRaw[] = [
                 component: () => import('../views/monitor-management.vue'),
             },
             {
+                path: 'telemetry',
+                name: 'telemetry',
+                alias: '/telemetry',
+                meta: { title: '遥测信息', requiresAuth: true },
+                component: () => import('../views/telemetry.vue'),
+            },
+            {
                 path: 'fault-handling',
                 name: 'fault-handling',
                 alias: '/fault-handling',
